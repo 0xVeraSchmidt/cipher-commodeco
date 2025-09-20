@@ -1,0 +1,17 @@
+import Header from "@/components/Header";
+import TradingInterface from "@/components/TradingInterface";
+import PriceTicker from "@/components/PriceTicker";
+import Footer from "@/components/Footer";
+
+const Index = () => {
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      <PriceTicker />
+      <TradingInterface />
+      <Footer />
+    </div>
+  );
+};
+
+export default Index;
