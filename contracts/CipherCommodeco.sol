@@ -16,6 +16,7 @@ contract CipherCommodecoV2 is SepoliaConfig {
     // Enhanced trading order structure with better FHE support
     struct TradingOrder {
         address trader;
+        string symbol; // plaintext symbol for quick listing
         euint32 orderId;
         euint32 orderType; // 1: Buy, 2: Sell
         euint32 quantity;
@@ -49,6 +50,7 @@ contract CipherCommodecoV2 is SepoliaConfig {
     address public owner;
     mapping(string => MarketData) public commodities;
     mapping(uint256 => TradingOrder) public orders;
+    mapping(address => uint256[]) private userOrderIds;
     mapping(address => Portfolio) public portfolios;
     uint256 public orderCounter;
     string[] public commoditySymbols;
@@ -110,6 +112,7 @@ contract CipherCommodecoV2 is SepoliaConfig {
         
         orders[orderCounter] = TradingOrder({
             trader: msg.sender,
+            symbol: _symbol,
             orderId: FHE.asEuint32(uint32(orderCounter)),
             orderType: FHE.asEuint32(uint32(_orderType)),
             quantity: FHE.asEuint32(0), // Will be set from encrypted data
@@ -118,6 +121,7 @@ contract CipherCommodecoV2 is SepoliaConfig {
             isExecuted: FHE.asEbool(false),
             timestamp: block.timestamp
         });
+        userOrderIds[msg.sender].push(orderCounter);
         
         emit OrderPlaced(orderCounter, msg.sender, _symbol, 0, 0); // Quantity is 0 because encrypted
     }
@@ -200,6 +204,33 @@ contract CipherCommodecoV2 is SepoliaConfig {
     // Get order count
     function getOrderCount() external view returns (uint256) {
         return orderCounter;
+    }
+
+    // Get user's order ids (all)
+    function getUserOrderIds(address _user) external view returns (uint256[] memory) {
+        return userOrderIds[_user];
+    }
+
+    // Get user's order ids with pagination (offset from newest)
+    function getUserOrderIdsPaginated(address _user, uint256 offset, uint256 limit) external view returns (uint256[] memory) {
+        uint256 total = userOrderIds[_user].length;
+        if (offset >= total) {
+            return new uint256[](0);
+        }
+        uint256 remaining = total - offset;
+        uint256 count = remaining < limit ? remaining : limit;
+        uint256[] memory ids = new uint256[](count);
+        for (uint256 i = 0; i < count; i++) {
+            // newest first
+            ids[i] = userOrderIds[_user][total - 1 - (offset + i)];
+        }
+        return ids;
+    }
+
+    // Lightweight order header for listing (plaintext fields only)
+    function getOrderHeader(uint256 _orderId) external view returns (address, string memory, uint256) {
+        TradingOrder storage o = orders[_orderId];
+        return (o.trader, o.symbol, o.timestamp);
     }
     
     // Set ACL permissions

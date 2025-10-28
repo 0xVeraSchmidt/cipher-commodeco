@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from "react";
+import { useState, useEffect, memo, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +77,13 @@ const TradingInterface = () => {
   // Fetch orders from contract
   const { count: orderCount, isLoading: orderCountLoading } = useOrderCounter();
 
+  // Stable computed order id list (newest first), contract ids start from 1
+  const totalOrders = orderCount ? Number(orderCount) : 0;
+  const orderIds = useMemo(() => {
+    if (!totalOrders) return [] as number[];
+    return Array.from({ length: totalOrders }, (_, i) => totalOrders - i);
+  }, [totalOrders]);
+
   // Load commodities data from contract (only when symbols change)
   useEffect(() => {
     const loadCommodities = async () => {
@@ -145,6 +152,7 @@ const TradingInterface = () => {
     const [decryptedData, setDecryptedData] = useState<any>(null);
     const [decrypting, setDecrypting] = useState(false);
     const [showDecrypted, setShowDecrypted] = useState(false);
+    const [notAvailable, setNotAvailable] = useState(false);
     
     if (isLoading) {
       return (
@@ -155,11 +163,20 @@ const TradingInterface = () => {
       );
     }
     
-    if (!orderData) {
-      return null;
+    useEffect(() => {
+      // 若contract返回空结构（常见于未存在的id），打标示
+      if (!orderData && !isLoading) {
+        setNotAvailable(true);
+      }
+    }, [orderData, isLoading]);
+
+    if (!orderData && notAvailable) {
+      return (
+        <div className="p-3 bg-muted rounded-md text-xs text-muted-foreground">not available</div>
+      );
     }
     
-    const [trader, orderIdBytes, orderTypeBytes, quantityBytes, priceBytes, commodityTypeBytes, isExecuted, timestamp] = orderData;
+    const [trader, orderIdBytes, orderTypeBytes, quantityBytes, priceBytes, commodityTypeBytes, isExecuted, timestamp] = orderData || [] as any;
     
     // Convert timestamp to readable date
     const orderDate = new Date(Number(timestamp) * 1000);
@@ -529,9 +546,9 @@ const TradingInterface = () => {
                 <div className="text-center text-muted-foreground py-4">
                   Loading orders...
                 </div>
-              ) : orderCount && Number(orderCount) > 0 ? (
-                Array.from({ length: Number(orderCount) }, (_, i) => (
-                  <ContractOrderItem key={i} orderId={i} />
+              ) : orderIds.length > 0 ? (
+                orderIds.map((id) => (
+                  <ContractOrderItem key={id} orderId={id} />
                 ))
               ) : (
                 <div className="text-center text-muted-foreground py-4">

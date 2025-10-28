@@ -6,7 +6,16 @@ async function initializeCommodities() {
   
   try {
     // Get contract instance
-    const contractAddress = "0xB08F713B543ba71c53B2673Bd1095E9628F8B9ef";
+    let contractAddress = process.env.CONTRACT_ADDRESS;
+    if (!contractAddress) {
+      try {
+        const info = require("../deployment-info.json");
+        contractAddress = info?.contractAddress;
+      } catch {}
+    }
+    if (!contractAddress) {
+      throw new Error("Missing CONTRACT_ADDRESS. Set env or deployment-info.json");
+    }
     const CipherCommodecoV2 = await ethers.getContractFactory("CipherCommodecoV2");
     const contract = CipherCommodecoV2.attach(contractAddress);
     
@@ -52,14 +61,14 @@ async function initializeCommodities() {
         console.log(`   Price: $${commodity.price} USD`);
         console.log(`   Supply: ${commodity.supply.toLocaleString()}`);
         
-        // Convert price to wei format (multiply by 1e18)
-        const priceInWei = ethers.parseEther(commodity.price.toString());
+        // Use cents to fit uint64 arithmetic in contract (avoid overflow)
+        const priceInCents = Math.round(commodity.price * 100);
         
         // Create commodity
         const tx = await contract.createCommodity(
           commodity.symbol,
           commodity.name,
-          priceInWei,
+          priceInCents,
           commodity.supply,
           "0x" // Empty proof for initialization
         );
@@ -82,7 +91,7 @@ async function initializeCommodities() {
     for (const symbol of allSymbols) {
       try {
         const info = await contract.getCommodityInfo(symbol);
-        const priceInUSD = ethers.formatEther(info[2]);
+        const priceInUSD = Number(info[2]) / 100;
         console.log(`\n${symbol}:`);
         console.log(`  Name: ${info[1]}`);
         console.log(`  Price: $${priceInUSD} USD`);

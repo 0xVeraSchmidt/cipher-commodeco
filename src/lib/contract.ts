@@ -237,7 +237,7 @@ export const CONTRACT_ABI = [
 ] as const;
 
 // Contract address - should be set via environment variable
-export const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0xB08F713B543ba71c53B2673Bd1095E9628F8B9ef';
+export const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || '0x55353950560739ea7Cd48A7E090556425056fF52';
 
 // Utility function to convert FHE handles to proper format
 const convertToBytes32 = (handle: Uint8Array): string => {

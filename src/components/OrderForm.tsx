@@ -47,7 +47,9 @@ const OrderForm = ({ type, commodity }: OrderFormProps) => {
   console.log('OrderForm Debug:', {
     instance: !!instance,
     fheLoading,
-    instanceMethods: instance ? Object.keys(instance) : null
+    // 某些打包器会把原型方法隐藏，改为查看已知方法是否存在
+    hasCreateEncryptedInput: !!(instance as any)?.createEncryptedInput,
+    hasUserDecrypt: !!(instance as any)?.userDecrypt
   });
   
   const {
@@ -175,6 +177,13 @@ const OrderForm = ({ type, commodity }: OrderFormProps) => {
           {!instance && !fheLoading && (
             <div className="text-sm text-destructive text-center">
               FHE encryption service unavailable
+            </div>
+          )}
+
+          {/* 若实例刚刚准备好，但UI尚未刷新，这里给出轻柔提示 */}
+          {!instance && fheLoading && (
+            <div className="text-xs text-muted-foreground text-center">
+              Initializing FHE service...
             </div>
           )}
 

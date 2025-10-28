@@ -46,7 +46,7 @@ export function useZamaInstance() {
     }
 
     // 开始初始化
-    const initZama = async () => {
+    const initZama = async (): Promise<FhevmInstance> => {
       if (isInitializing) return;
       
       isInitializing = true;
@@ -96,6 +96,9 @@ export function useZamaInstance() {
           console.log('🎉 FHE initialization completed successfully!');
           console.log('📊 Instance ready for encryption/decryption operations');
         }
+
+        // 返回实例，供等待者使用
+        return zamaInstance;
       } catch (err) {
         console.error('❌ FHE initialization failed at step:', err);
         console.error('📊 Error details:', {
@@ -107,6 +110,8 @@ export function useZamaInstance() {
         if (mountedRef.current) {
           setError(`Failed to initialize encryption service: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
+        // 向上抛出，确保等待者能收到失败状态
+        throw err;
       } finally {
         isInitializing = false;
         if (mountedRef.current) {
@@ -116,11 +121,26 @@ export function useZamaInstance() {
     };
 
     globalInitPromise = initZama();
+    // 初始化完成后，确保状态被刷新（无论成功失败）
+    globalInitPromise
+      .then((inst) => {
+        if (mountedRef.current && inst) {
+          setInstance(inst);
+          setIsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (mountedRef.current) {
+          setIsLoading(false);
+        }
+      });
 
     return () => {
       mountedRef.current = false;
     };
   }, []);
 
-  return { instance, isLoading, error };
+  // 兜底：若本地state还未更新，优先返回全局实例
+  const effectiveInstance = instance ?? globalInstance;
+  return { instance: effectiveInstance, isLoading, error };
 }
