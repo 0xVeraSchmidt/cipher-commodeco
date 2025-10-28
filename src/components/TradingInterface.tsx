@@ -178,6 +178,15 @@ const TradingInterface = () => {
     
     const [trader, orderIdBytes, orderTypeBytes, quantityBytes, priceBytes, commodityTypeBytes, isExecuted, timestamp] = orderData || [] as any;
     
+    // Add safety checks for undefined values
+    if (!trader || !timestamp) {
+      return (
+        <div className="p-3 bg-muted rounded-md text-xs text-muted-foreground">
+          Order data incomplete
+        </div>
+      );
+    }
+    
     // Convert timestamp to readable date
     const orderDate = new Date(Number(timestamp) * 1000);
     
