@@ -183,6 +183,15 @@ const TradingInterface = () => {
       }
     }, [isLoading, orderData, orderId]);
     
+    // Debug state changes
+    useEffect(() => {
+      console.log(`🔍 State changed for order ${orderId}:`, {
+        showDecrypted,
+        decryptedData: decryptedData ? 'exists' : 'null',
+        decrypting
+      });
+    }, [showDecrypted, decryptedData, decrypting, orderId]);
+    
     if (isLoading) {
       return (
         <div className="p-3 bg-muted rounded-md animate-pulse">
@@ -200,7 +209,7 @@ const TradingInterface = () => {
       );
     }
     
-    const [trader, symbol, timestamp] = orderData || [] as [string, string, bigint];
+    const [trader, symbol, timestamp] = orderData || ([] as unknown as [string, string, bigint]);
     
     if (!trader || !timestamp) {
       return (
@@ -218,6 +227,10 @@ const TradingInterface = () => {
     const commodity = commodities.find(c => c.symbol === commoditySymbol);
     
     const handleDecryptOrder = async () => {
+      console.log('🔍 Starting decryption for order:', orderId);
+      console.log('🔍 Encrypted data available:', !!encryptedData);
+      console.log('🔍 Encrypted data:', encryptedData);
+      
       if (!encryptedData) {
         alert('No encrypted data available for this order');
         return;
@@ -227,12 +240,15 @@ const TradingInterface = () => {
       try {
         const result = await decryptOrderData(orderId, encryptedData);
         console.log('🔍 Decryption result received:', result);
+        console.log('🔍 Result type:', typeof result);
+        console.log('🔍 Result keys:', result ? Object.keys(result) : 'null');
         
         // Set decrypted data directly, simple display
         setDecryptedData(result);
         setShowDecrypted(true);
         
         console.log('✅ Order decrypted successfully:', result);
+        console.log('🔍 State updated - showDecrypted:', true, 'decryptedData:', result);
       } catch (error) {
         console.error('Failed to decrypt order:', error);
         alert('Failed to decrypt order. Please check console for details.');
@@ -289,33 +305,33 @@ const TradingInterface = () => {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Symbol:</span>
-                  <span className="text-xs font-semibold">{decryptedData.symbol || symbol}</span>
+                  <span className="text-xs font-medium text-gray-600">Symbol:</span>
+                  <span className="text-xs font-semibold text-gray-900">{decryptedData.symbol || symbol}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Type:</span>
-                  <span className={`text-xs font-semibold ${decryptedData.orderType === 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className="text-xs font-medium text-gray-600">Type:</span>
+                  <span className={`text-xs font-semibold ${decryptedData.orderType === 0 ? 'text-green-700' : 'text-red-700'}`}>
                     {decryptedData.orderType === 0 ? 'BUY' : 'SELL'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Quantity:</span>
-                  <span className="text-xs font-semibold">{decryptedData.quantity || 'Unknown'}</span>
+                  <span className="text-xs font-medium text-gray-600">Quantity:</span>
+                  <span className="text-xs font-semibold text-gray-900">{decryptedData.quantity || 'Unknown'}</span>
                 </div>
               </div>
               
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Price:</span>
-                  <span className="text-xs font-semibold text-gold">${decryptedData.price || 'Unknown'}</span>
+                  <span className="text-xs font-medium text-gray-600">Price:</span>
+                  <span className="text-xs font-semibold text-yellow-700">${decryptedData.price || 'Unknown'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Trader:</span>
-                  <span className="text-xs font-mono">{trader.slice(0, 6)}...{trader.slice(-4)}</span>
+                  <span className="text-xs font-medium text-gray-600">Trader:</span>
+                  <span className="text-xs font-mono text-gray-900">{trader.slice(0, 6)}...{trader.slice(-4)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Time:</span>
-                  <span className="text-xs">{orderDate.toLocaleString()}</span>
+                  <span className="text-xs font-medium text-gray-600">Time:</span>
+                  <span className="text-xs text-gray-900">{orderDate.toLocaleString()}</span>
                 </div>
               </div>
             </div>
