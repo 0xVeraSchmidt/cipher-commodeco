@@ -473,53 +473,6 @@ export function useMarketData() {
   return { marketData: data, isLoading, error };
 }
 
-// Hook for decrypting order data
-export function useDecryptOrderData(orderId: number) {
-  const { instance } = useZamaInstance();
-  const { address } = useAccount();
-  const signer = useEthersSigner();
-  
-  const { data: encryptedData, isLoading, error } = useReadContract({
-    address: CONTRACT_ADDRESS as `0x${string}`,
-    abi: CONTRACT_ABI,
-    functionName: 'getOrderEncryptedData',
-    args: [BigInt(orderId)]
-  });
-
-  const decryptOrderData = async () => {
-    if (!instance || !address || !signer || !encryptedData) {
-      throw new Error('Missing required data for decryption');
-    }
-
-    try {
-      // signer is already available
-      
-      // Prepare handles for decryption
-      const handleContractPairs = [
-        { handle: encryptedData[0], contractAddress: CONTRACT_ADDRESS },
-        { handle: encryptedData[1], contractAddress: CONTRACT_ADDRESS },
-        { handle: encryptedData[2], contractAddress: CONTRACT_ADDRESS },
-        { handle: encryptedData[3], contractAddress: CONTRACT_ADDRESS }
-      ];
-
-      // Decrypt the data
-      const result = await instance.userDecrypt(handleContractPairs);
-      
-      return {
-        amount: result[encryptedData[0]]?.toString(),
-        price: result[encryptedData[1]]?.toString(),
-        isBuy: result[encryptedData[2]],
-        isActive: result[encryptedData[3]]
-      };
-    } catch (err) {
-      console.error('Error decrypting order data:', err);
-      throw err;
-    }
-  };
-
-  return { decryptOrderData, encryptedData, isLoading, error };
-}
-
 // Hook for decrypting portfolio data
 export function useDecryptPortfolioData(traderAddress?: string) {
   const { instance } = useZamaInstance();
@@ -613,4 +566,59 @@ export function useOrderEncryptedData(orderId: number) {
     isLoading,
     error,
   };
+}
+
+// Hook for decrypting order data
+export function useDecryptOrderData() {
+  const { instance } = useZamaInstance();
+  const { address } = useAccount();
+  const signer = useEthersSigner();
+
+  const decryptOrderData = async (orderId: number, encryptedHandles: string[]) => {
+    if (!instance || !address || !signer) {
+      throw new Error('Missing FHE instance, wallet connection, or signer');
+    }
+
+    try {
+      console.log('Starting order decryption for order ID:', orderId);
+      console.log('Encrypted handles:', encryptedHandles);
+
+      // Create decryption input
+      const decryptionInput = instance.createDecryptionInput(CONTRACT_ADDRESS, address);
+      
+      // Add encrypted handles for decryption
+      encryptedHandles.forEach((handle, index) => {
+        console.log(`Adding handle ${index}:`, handle);
+        decryptionInput.addExternal(handle);
+      });
+
+      // Perform decryption
+      const decryptionResult = await decryptionInput.decrypt();
+      console.log('Decryption result:', decryptionResult);
+
+      // Parse decrypted values
+      const decryptedValues = decryptionResult.map((value: any) => {
+        if (typeof value === 'bigint') {
+          return Number(value);
+        }
+        return value;
+      });
+
+      console.log('Parsed decrypted values:', decryptedValues);
+
+      return {
+        orderId: decryptedValues[0] || orderId,
+        orderType: decryptedValues[1] || 0, // 0 = buy, 1 = sell
+        quantity: decryptedValues[2] || 0,
+        price: decryptedValues[3] || 0,
+        commodityType: decryptedValues[4] || 0,
+        success: true
+      };
+    } catch (error) {
+      console.error('Error decrypting order data:', error);
+      throw error;
+    }
+  };
+
+  return { decryptOrderData };
 }

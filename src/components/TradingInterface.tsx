@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TrendingUp, TrendingDown, Lock, Eye, EyeOff, Plus } from "lucide-react";
-import { useMarketData, usePortfolioInfo, useDecryptPortfolioData, useCommoditySymbols, useCommodityInfo, useOrderCounter, useOrderData } from "@/lib/contract";
+import { useMarketData, usePortfolioInfo, useDecryptPortfolioData, useCommoditySymbols, useCommodityInfo, useOrderCounter, useOrderData, useOrderEncryptedData, useDecryptOrderData } from "@/lib/contract";
 import { useZamaInstance } from "@/hooks/useZamaInstance";
 import { useAccount } from "wagmi";
 import OrderForm from "./OrderForm";
@@ -137,6 +137,11 @@ const TradingInterface = () => {
   // Component to display contract order data
   const ContractOrderItem = ({ orderId }: { orderId: number }) => {
     const { orderData, isLoading } = useOrderData(orderId);
+    const { encryptedData, isLoading: encryptedLoading } = useOrderEncryptedData(orderId);
+    const { decryptOrderData } = useDecryptOrderData();
+    const [decryptedData, setDecryptedData] = useState<any>(null);
+    const [decrypting, setDecrypting] = useState(false);
+    const [showDecrypted, setShowDecrypted] = useState(false);
     
     if (isLoading) {
       return (
@@ -160,6 +165,26 @@ const TradingInterface = () => {
     const commoditySymbol = commodityTypeBytes ? ethers.toUtf8String(commodityTypeBytes) : 'Unknown';
     const commodity = commodities.find(c => c.symbol === commoditySymbol);
     
+    const handleDecryptOrder = async () => {
+      if (!encryptedData) {
+        alert('No encrypted data available for this order');
+        return;
+      }
+      
+      setDecrypting(true);
+      try {
+        const result = await decryptOrderData(orderId, encryptedData);
+        setDecryptedData(result);
+        setShowDecrypted(true);
+        console.log('Order decrypted successfully:', result);
+      } catch (error) {
+        console.error('Failed to decrypt order:', error);
+        alert('Failed to decrypt order. Please check console for details.');
+      } finally {
+        setDecrypting(false);
+      }
+    };
+    
     return (
       <div className="p-3 bg-muted rounded-md">
         <div className="flex items-center justify-between mb-2">
@@ -174,27 +199,53 @@ const TradingInterface = () => {
             {orderDate.toLocaleTimeString()}
           </span>
         </div>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div>Trader: {trader.slice(0, 6)}...{trader.slice(-4)}</div>
-          <div>Order ID: {orderId}</div>
-          <div>Type: {orderTypeBytes ? ethers.toUtf8String(orderTypeBytes) : 'Unknown'}</div>
-          <div>Status: {isExecuted ? 'Completed' : 'Pending'}</div>
-        </div>
+        
+        {!showDecrypted ? (
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div>Trader: {trader.slice(0, 6)}...{trader.slice(-4)}</div>
+            <div>Order ID: {orderId}</div>
+            <div>Type: {orderTypeBytes ? ethers.toUtf8String(orderTypeBytes) : 'Unknown'}</div>
+            <div>Status: {isExecuted ? 'Completed' : 'Pending'}</div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="text-sm font-semibold text-green-600">Decrypted Order Data:</div>
+            <div className="grid grid-cols-2 gap-2 text-sm bg-green-50 p-2 rounded">
+              <div>Order ID: {decryptedData?.orderId || 'N/A'}</div>
+              <div>Type: {decryptedData?.orderType === 0 ? 'BUY' : 'SELL'}</div>
+              <div>Quantity: {decryptedData?.quantity || 'N/A'}</div>
+              <div>Price: ${decryptedData?.price || 'N/A'}</div>
+              <div>Commodity Type: {decryptedData?.commodityType || 'N/A'}</div>
+              <div>Total Value: ${decryptedData?.quantity && decryptedData?.price ? (decryptedData.quantity * decryptedData.price).toFixed(2) : 'N/A'}</div>
+            </div>
+          </div>
+        )}
+        
         <div className="mt-2 flex items-center justify-between">
           <Badge variant="outline" className="text-xs">
             <Lock className="w-3 h-3 mr-1" />
             FHE Encrypted
           </Badge>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => {
-              // TODO: Implement order decryption
-              alert(`Decrypting order ${orderId}...`);
-            }}
-          >
-            Decrypt Order
-          </Button>
+          <div className="flex space-x-2">
+            {!showDecrypted ? (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleDecryptOrder}
+                disabled={decrypting || encryptedLoading}
+              >
+                {decrypting ? 'Decrypting...' : 'Decrypt Order'}
+              </Button>
+            ) : (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setShowDecrypted(false)}
+              >
+                Hide Details
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     );
