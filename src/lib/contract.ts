@@ -580,42 +580,58 @@ export function useDecryptOrderData() {
     }
 
     try {
-      console.log('Starting order decryption for order ID:', orderId);
-      console.log('Encrypted handles:', encryptedHandles);
-
-      // Create decryption input
-      const decryptionInput = instance.createDecryptionInput(CONTRACT_ADDRESS, address);
-      
-      // Add encrypted handles for decryption
-      encryptedHandles.forEach((handle, index) => {
-        console.log(`Adding handle ${index}:`, handle);
-        decryptionInput.addExternal(handle);
+      console.log('🚀 Starting FHE decryption process...');
+      console.log('📊 Input parameters:', {
+        orderId,
+        contractAddress: CONTRACT_ADDRESS,
+        encryptedHandles
       });
 
-      // Perform decryption
-      const decryptionResult = await decryptionInput.decrypt();
-      console.log('Decryption result:', decryptionResult);
+      // Check if handles are valid (not all zeros)
+      const validHandles = encryptedHandles.filter(handle => 
+        handle !== '0x0000000000000000000000000000000000000000000000000000000000000000'
+      );
 
-      // Parse decrypted values
-      const decryptedValues = decryptionResult.map((value: any) => {
-        if (typeof value === 'bigint') {
-          return Number(value);
-        }
-        return value;
-      });
+      if (validHandles.length === 0) {
+        throw new Error('No valid encrypted handles found for this order');
+      }
 
-      console.log('Parsed decrypted values:', decryptedValues);
+      console.log('🔄 Step 1: Building handle-contract pairs...');
+      const handleContractPairs = validHandles.map(handle => ({
+        handle: handle,
+        contractAddress: CONTRACT_ADDRESS
+      }));
+      console.log('✅ Step 1 completed: Handle-contract pairs built');
+      console.log('📊 Pairs count:', handleContractPairs.length);
 
-      return {
-        orderId: decryptedValues[0] || orderId,
-        orderType: decryptedValues[1] || 0, // 0 = buy, 1 = sell
-        quantity: decryptedValues[2] || 0,
-        price: decryptedValues[3] || 0,
-        commodityType: decryptedValues[4] || 0,
+      console.log('🔄 Step 2: Decrypting handles...');
+      const result = await instance.userDecrypt(handleContractPairs);
+      console.log('✅ Step 2 completed: Handles decrypted');
+      console.log('📊 Decryption result keys:', Object.keys(result || {}));
+
+      console.log('🔄 Step 3: Parsing decrypted data...');
+      const decryptedData = {
+        orderId: result[encryptedHandles[0]]?.toString() || orderId.toString(),
+        orderType: Number(result[encryptedHandles[1]]) || 0,
+        quantity: result[encryptedHandles[2]]?.toString() || '0',
+        price: Number(result[encryptedHandles[3]]) / 100 || 0, // Convert from cents
+        commodityType: Number(result[encryptedHandles[4]]) || 0,
         success: true
       };
+
+      console.log('✅ Step 3 completed: Data parsed successfully');
+      console.log('📊 Decrypted data:', decryptedData);
+      console.log('🎉 Decryption completed successfully!');
+
+      return decryptedData;
     } catch (error) {
-      console.error('Error decrypting order data:', error);
+      console.error('❌ FHE decryption failed:', error);
+      console.error('📊 Error details:', {
+        name: error?.name,
+        message: error?.message,
+        stack: error?.stack,
+        orderId
+      });
       throw error;
     }
   };

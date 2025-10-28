@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { TrendingUp, TrendingDown, Lock, Eye, EyeOff, Plus } from "lucide-react";
 import { useMarketData, usePortfolioInfo, useDecryptPortfolioData, useCommoditySymbols, useCommodityInfo, useOrderCounter, useOrderData, useOrderEncryptedData, useDecryptOrderData } from "@/lib/contract";
 import { useZamaInstance } from "@/hooks/useZamaInstance";
+import { usePriceManager } from "@/hooks/usePriceManager";
 import { useAccount } from "wagmi";
 import OrderForm from "./OrderForm";
 import { ethers } from "ethers";
@@ -63,8 +64,8 @@ const TradingInterface = () => {
     supply: ''
   });
   
-  // Price volatility state
-  const [priceVolatility, setPriceVolatility] = useState<{[key: string]: number}>({});
+  // Use price manager for synchronized price updates
+  const { prices, getPrice, getAllPrices } = usePriceManager();
   
   // Fetch commodity symbols from contract
   const { symbols, isLoading: symbolsLoading } = useCommoditySymbols();
@@ -86,21 +87,18 @@ const TradingInterface = () => {
       
       for (const symbol of symbols) {
         try {
-          // For now, we'll use mock data for change and volume since these aren't in the contract
-          // In a real implementation, you might want to add these to the contract
-          const mockChange = Math.random() * 20 - 10; // Random change between -10 and 10
-          const mockChangePercent = Math.random() * 1 + 1; // Random change percent between 1% and 2%
+          const priceData = getPrice(symbol);
           const mockVolume = `${(Math.random() * 100).toFixed(1)}M`;
 
           commodityData.push({
             symbol,
-            name: `${symbol} Futures`, // Default name
-            price: 0, // Will be updated from contract
+            name: priceData?.name || `${symbol} Futures`,
+            price: priceData?.currentPrice || 0,
             isActive: true,
-            icon: getCommodityIcon(symbol),
-            color: getCommodityColor(symbol),
-            change: mockChange,
-            changePercent: mockChangePercent,
+            icon: priceData?.icon || getCommodityIcon(symbol),
+            color: priceData?.color || getCommodityColor(symbol),
+            change: priceData ? (priceData.currentPrice - priceData.basePrice) : 0,
+            changePercent: priceData ? (priceData.volatility * 100) : 0,
             volume: mockVolume
           });
         } catch (error) {
@@ -115,24 +113,22 @@ const TradingInterface = () => {
     };
 
     loadCommodities();
-  }, [symbols, selectedCommodity]);
+  }, [symbols, selectedCommodity, prices]);
 
-  // Price volatility effect - update prices every 5 seconds
+  // Update selected commodity when prices change
   useEffect(() => {
-    const interval = setInterval(() => {
-      setPriceVolatility(prev => {
-        const newVolatility: {[key: string]: number} = {};
-        symbols?.forEach(symbol => {
-          // Generate random volatility between -0.5% and 0.5%
-          const volatility = (Math.random() - 0.5) * 0.01; // -0.5% to 0.5%
-          newVolatility[symbol] = volatility;
-        });
-        return newVolatility;
-      });
-    }, 5000); // Update every 5 seconds
-
-    return () => clearInterval(interval);
-  }, [symbols]);
+    if (selectedCommodity) {
+      const updatedPrice = getPrice(selectedCommodity.symbol);
+      if (updatedPrice) {
+        setSelectedCommodity(prev => prev ? {
+          ...prev,
+          price: updatedPrice.currentPrice,
+          change: updatedPrice.currentPrice - updatedPrice.basePrice,
+          changePercent: updatedPrice.volatility * 100
+        } : null);
+      }
+    }
+  }, [prices, selectedCommodity]);
 
   // Component to display contract order data
   const ContractOrderItem = ({ orderId }: { orderId: number }) => {
@@ -252,18 +248,16 @@ const TradingInterface = () => {
   };
 
   // Component to display individual commodity with real price
-  const CommodityItem = ({ commodity }: { commodity: CommodityData }) => {
+  const CommodityItem = memo(({ commodity }: { commodity: CommodityData }) => {
     const { info, isLoading } = useCommodityInfo(commodity.symbol);
+    const priceData = getPrice(commodity.symbol);
     
-    // Convert price from wei to USD (assuming price is stored in wei)
-    const basePrice = info ? parseFloat(ethers.formatEther(info[2])) : commodity.price;
-    const volatility = priceVolatility[commodity.symbol] || 0;
-    const currentPrice = basePrice * (1 + volatility);
-    const name = info ? info[1] : commodity.name;
+    // Use price manager data or fallback to contract data
+    const basePrice = priceData?.basePrice || (info ? parseFloat(ethers.formatEther(info[2])) : commodity.price);
+    const currentPrice = priceData?.currentPrice || commodity.price;
+    const volatility = priceData?.volatility || 0;
+    const name = priceData?.name || (info ? info[1] : commodity.name);
     const isActive = info ? info[3] : commodity.isActive;
-    
-    // Debug logging
-    console.log(`Commodity ${commodity.symbol}:`, { info, basePrice, volatility, currentPrice, name, isActive });
 
     return (
       <div
@@ -309,7 +303,7 @@ const TradingInterface = () => {
         </div>
       </div>
     );
-  };
+  });
   const { instance } = useZamaInstance();
   const { address } = useAccount();
 

@@ -1,20 +1,54 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createInstance, initSDK, SepoliaConfig } from '@zama-fhe/relayer-sdk/bundle';
 import type { FhevmInstance } from '@zama-fhe/relayer-sdk/bundle';
 
+// 全局缓存，避免重复初始化
+let globalInstance: FhevmInstance | null = null;
+let globalInitPromise: Promise<FhevmInstance> | null = null;
+let isInitializing = false;
+
 export function useZamaInstance() {
-  const [instance, setInstance] = useState<FhevmInstance | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [instance, setInstance] = useState<FhevmInstance | null>(globalInstance);
+  const [isLoading, setIsLoading] = useState(!globalInstance);
   const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    let mounted = true;
+    mountedRef.current = true;
 
+    // 如果已经有全局实例，直接使用
+    if (globalInstance) {
+      setInstance(globalInstance);
+      setIsLoading(false);
+      return;
+    }
+
+    // 如果正在初始化，等待完成
+    if (globalInitPromise) {
+      globalInitPromise.then((inst) => {
+        if (mountedRef.current) {
+          setInstance(inst);
+          setIsLoading(false);
+        }
+      }).catch((err) => {
+        if (mountedRef.current) {
+          setError(`Failed to initialize encryption service: ${err instanceof Error ? err.message : 'Unknown error'}`);
+          setIsLoading(false);
+        }
+      });
+      return;
+    }
+
+    // 开始初始化
     const initZama = async () => {
+      if (isInitializing) return;
+      
+      isInitializing = true;
+      setIsLoading(true);
+      setError(null);
+
       try {
         console.log('🚀 Starting FHE initialization process...');
-        setIsLoading(true);
-        setError(null);
 
         // 检查CDN脚本是否加载
         if (typeof window !== 'undefined' && !window.relayerSDK) {
@@ -46,7 +80,10 @@ export function useZamaInstance() {
         console.log('✅ Step 2 completed: FHE instance created successfully');
         console.log('📊 Instance methods:', Object.keys(zamaInstance || {}));
 
-        if (mounted) {
+        // 设置全局实例
+        globalInstance = zamaInstance;
+        
+        if (mountedRef.current) {
           setInstance(zamaInstance);
           console.log('🎉 FHE initialization completed successfully!');
           console.log('📊 Instance ready for encryption/decryption operations');
@@ -59,20 +96,21 @@ export function useZamaInstance() {
           stack: err?.stack
         });
         
-        if (mounted) {
+        if (mountedRef.current) {
           setError(`Failed to initialize encryption service: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
       } finally {
-        if (mounted) {
+        isInitializing = false;
+        if (mountedRef.current) {
           setIsLoading(false);
         }
       }
     };
 
-    initZama();
+    globalInitPromise = initZama();
 
     return () => {
-      mounted = false;
+      mountedRef.current = false;
     };
   }, []);
 

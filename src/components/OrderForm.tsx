@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useCreateOrder } from "@/lib/contract";
 import { useZamaInstance } from "@/hooks/useZamaInstance";
+import { usePriceManager } from "@/hooks/usePriceManager";
 import { useAccount } from "wagmi";
 
 const orderSchema = z.object({
@@ -40,6 +41,7 @@ const OrderForm = ({ type, commodity, privacyMode }: OrderFormProps) => {
   const { toast } = useToast();
   const { createOrder, isPending, error } = useCreateOrder();
   const { instance, isLoading: fheLoading } = useZamaInstance();
+  const { getPrice } = usePriceManager();
   const { address } = useAccount();
   
   const {
@@ -56,12 +58,14 @@ const OrderForm = ({ type, commodity, privacyMode }: OrderFormProps) => {
     },
   });
 
-  // Update price when commodity changes
+  // Update price when commodity changes or price manager updates
   useEffect(() => {
-    if (commodity.price > 0) {
-      setValue("price", commodity.price.toString());
+    const priceData = getPrice(commodity.symbol);
+    const currentPrice = priceData?.currentPrice || commodity.price;
+    if (currentPrice > 0) {
+      setValue("price", currentPrice.toString());
     }
-  }, [commodity.price, setValue]);
+  }, [commodity.symbol, commodity.price, getPrice, setValue]);
 
   const onSubmit = async (data: OrderFormData) => {
     if (!instance || !address) {
