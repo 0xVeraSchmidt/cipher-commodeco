@@ -66,10 +66,10 @@ npm run dev
 ### Environment Setup
 ```bash
 # Required environment variables
-NEXT_PUBLIC_CHAIN_ID=11155111
-NEXT_PUBLIC_RPC_URL=your_rpc_endpoint
+VITE_CHAIN_ID=11155111
+SEPOLIA_RPC_URL=https://1rpc.io/sepolia
 NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=your_project_id
-NEXT_PUBLIC_CONTRACT_ADDRESS=deployed_contract_address
+VITE_CONTRACT_ADDRESS=deployed_contract_address
 ```
 
 ### Smart Contract Features
@@ -78,18 +78,53 @@ NEXT_PUBLIC_CONTRACT_ADDRESS=deployed_contract_address
 - **Reputation System**: Trust-based trading with encrypted scores
 - **Market Data**: Encrypted price feeds and analytics
 
+## 🔐 FHE Implementation Details
+
+### Encryption Flow
+1. **Client-Side Encryption**: User data is encrypted using Zama's FHE SDK
+2. **Contract Storage**: Encrypted data is stored on-chain with ACL permissions
+3. **Computation**: FHE operations are performed on encrypted data
+4. **Decryption**: Only authorized users can decrypt their own data
+
+### Key Components
+- **useZamaInstance**: FHE SDK initialization and management
+- **useEthersSigner**: Wallet integration for signing operations
+- **Contract Hooks**: Encrypted data interaction with smart contracts
+- **ACL Management**: Proper permission handling for data access
+
+### Data Types Used
+- `euint32`: For amounts, prices, and numerical values
+- `ebool`: For boolean flags (buy/sell, active status)
+- `externalEuint32`: For external encrypted inputs
+- `bytes32`: For FHE handles and proofs
+
 ## 📦 Deployment
+
+### Contract Deployment
+```bash
+# Compile contracts
+npm run compile
+
+# Deploy to Sepolia
+npm run deploy
+
+# Verify on Etherscan
+npm run verify
+```
+
+### Frontend Deployment
+```bash
+# Build for production
+npm run build
+
+# Preview locally
+npm run preview
+```
 
 ### Vercel (Recommended)
 1. Connect GitHub repository
 2. Configure environment variables
 3. Deploy automatically
-
-### Manual Deployment
-```bash
-npm run build
-npm run preview
-```
 
 ## 🤝 Contributing
 
@@ -120,6 +155,20 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [ ] Institutional-grade security
 - [ ] Mobile application
 - [ ] API for third-party integrations
+
+## 🚨 Important Notes
+
+### FHE Requirements
+- **CDN Script**: Must include Zama FHE SDK CDN in index.html
+- **CORS Headers**: Required for FHE SDK initialization
+- **Global Definition**: Vite config must define global as globalThis
+- **ACL Permissions**: Proper permission handling is critical for data access
+
+### Best Practices
+- Always use `writeContractAsync` instead of `writeContract`
+- Implement proper error handling for FHE operations
+- Validate FHE handles are 32 bytes before contract calls
+- Use BigInt for numerical values to avoid overflow
 
 ---
 

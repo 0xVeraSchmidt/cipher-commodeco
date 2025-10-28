@@ -3,7 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Lock, Eye, EyeOff } from "lucide-react";
-import { useMarketData, usePortfolioInfo } from "@/lib/contract";
+import { useMarketData, usePortfolioInfo, useDecryptPortfolioData } from "@/lib/contract";
+import { useZamaInstance } from "@/hooks/useZamaInstance";
+import { useAccount } from "wagmi";
 import OrderForm from "./OrderForm";
 
 const commodities = [
@@ -52,10 +54,29 @@ const commodities = [
 const TradingInterface = () => {
   const [privacyMode, setPrivacyMode] = useState(true);
   const [selectedCommodity, setSelectedCommodity] = useState(commodities[0]);
+  const [decryptedPortfolio, setDecryptedPortfolio] = useState<any>(null);
   
   // Fetch real-time market data from contract
   const { marketData, isLoading: marketLoading } = useMarketData();
   const { portfolioInfo, isLoading: portfolioLoading } = usePortfolioInfo();
+  const { decryptPortfolioData } = useDecryptPortfolioData();
+  const { instance } = useZamaInstance();
+  const { address } = useAccount();
+
+  const handleDecryptPortfolio = async () => {
+    if (!instance || !address) {
+      alert('Please connect your wallet to decrypt portfolio data');
+      return;
+    }
+
+    try {
+      const decrypted = await decryptPortfolioData();
+      setDecryptedPortfolio(decrypted);
+    } catch (error) {
+      console.error('Failed to decrypt portfolio:', error);
+      alert('Failed to decrypt portfolio data');
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -118,6 +139,68 @@ const TradingInterface = () => {
               ))}
             </CardContent>
           </Card>
+
+          {/* Portfolio Section */}
+          <Card className="trading-card mt-6">
+            <CardHeader>
+              <CardTitle className="text-gold">Portfolio</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {portfolioLoading ? (
+                <div className="text-center text-muted-foreground">
+                  Loading portfolio...
+                </div>
+              ) : portfolioInfo ? (
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm">Total Value:</span>
+                    <span className="font-mono text-sm">
+                      {privacyMode ? "●●●●" : `$${portfolioInfo[0] || 0}`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm">Trade Count:</span>
+                    <span className="font-mono text-sm">
+                      {privacyMode ? "●●" : portfolioInfo[2] || 0}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm">Verified:</span>
+                    <span className="font-mono text-sm">
+                      {portfolioInfo[3] ? "Yes" : "No"}
+                    </span>
+                  </div>
+                  
+                  {instance && address && (
+                    <Button 
+                      onClick={handleDecryptPortfolio}
+                      variant="outline"
+                      size="sm"
+                      className="w-full mt-2"
+                    >
+                      Decrypt Portfolio
+                    </Button>
+                  )}
+                  
+                  {decryptedPortfolio && (
+                    <div className="mt-4 p-3 bg-muted rounded-md">
+                      <div className="text-sm font-semibold mb-2">Decrypted Data:</div>
+                      <div className="space-y-1 text-xs">
+                        <div>Total Value: {decryptedPortfolio.totalValue}</div>
+                        <div>Profit/Loss: {decryptedPortfolio.profitLoss}</div>
+                        <div>Trade Count: {decryptedPortfolio.tradeCount}</div>
+                        <div>Verified: {decryptedPortfolio.isVerified ? "Yes" : "No"}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center text-muted-foreground">
+                  No portfolio data available
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Chart and Trading */}
@@ -135,7 +218,7 @@ const TradingInterface = () => {
                 <div className="flex items-center space-x-2">
                   <Lock className="h-4 w-4 text-gold" />
                   <Badge variant="outline" className="border-gold/20 text-gold">
-                    Encrypted
+                    FHE Encrypted
                   </Badge>
                 </div>
               </div>
@@ -155,6 +238,19 @@ const TradingInterface = () => {
                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-gold to-transparent opacity-60"></div>
                 <div className="absolute top-1/3 left-0 right-0 h-px bg-gradient-to-r from-transparent via-success to-transparent opacity-40"></div>
               </div>
+              
+              {/* Market Data from Contract */}
+              {marketData && (
+                <div className="mt-4 p-3 bg-muted rounded-md">
+                  <div className="text-sm font-semibold mb-2">Contract Market Data:</div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>Current Price: {privacyMode ? "●●●●" : marketData[0]}</div>
+                    <div>Volume 24h: {privacyMode ? "●●●●" : marketData[1]}</div>
+                    <div>Price Change: {privacyMode ? "●●●●" : marketData[2]}</div>
+                    <div>Last Update: {new Date(Number(marketData[3]) * 1000).toLocaleTimeString()}</div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

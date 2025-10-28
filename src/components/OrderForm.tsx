@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-import { useCreateOrder, encryptTradingData } from "@/lib/contract";
+import { useCreateOrder } from "@/lib/contract";
+import { useZamaInstance } from "@/hooks/useZamaInstance";
+import { useAccount } from "wagmi";
 
 const orderSchema = z.object({
   amount: z.string().min(1, "Amount is required").refine(
@@ -33,6 +35,8 @@ interface OrderFormProps {
 const OrderForm = ({ type, commodity, privacyMode }: OrderFormProps) => {
   const { toast } = useToast();
   const { createOrder, isPending, error } = useCreateOrder();
+  const { instance, isLoading: fheLoading } = useZamaInstance();
+  const { address } = useAccount();
   
   const {
     register,
@@ -44,20 +48,22 @@ const OrderForm = ({ type, commodity, privacyMode }: OrderFormProps) => {
   });
 
   const onSubmit = async (data: OrderFormData) => {
+    if (!instance || !address) {
+      toast({
+        title: "Wallet Not Connected",
+        description: "Please connect your wallet to place orders.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const amount = Number(data.amount);
       const price = commodity.price;
       const isBuy = type === "buy";
       
-      // Encrypt trading data using FHE
-      const encryptedData = encryptTradingData({
-        amount,
-        price,
-        timestamp: Date.now()
-      });
-      
-      // Create encrypted order on blockchain
-      await createOrder(amount, price, isBuy, encryptedData);
+      // Create encrypted order on blockchain using FHE
+      await createOrder(amount, price, isBuy);
       
       const orderValue = amount * price;
       
@@ -68,15 +74,17 @@ const OrderForm = ({ type, commodity, privacyMode }: OrderFormProps) => {
       
       reset();
     } catch (error) {
+      console.error('Order submission error:', error);
       toast({
         title: "Order Failed",
-        description: "Unable to place order. Please try again.",
+        description: error instanceof Error ? error.message : "Unable to place order. Please try again.",
         variant: "destructive",
       });
     }
   };
 
   const isBuy = type === "buy";
+  const isDisabled = isPending || fheLoading || !instance || !address;
 
   return (
     <Card className="trading-card">
@@ -96,6 +104,7 @@ const OrderForm = ({ type, commodity, privacyMode }: OrderFormProps) => {
               placeholder="0.00"
               {...register("amount")}
               className="font-mono"
+              disabled={isDisabled}
             />
             {errors.amount && (
               <p className="text-sm text-destructive">{errors.amount.message}</p>
@@ -119,6 +128,18 @@ const OrderForm = ({ type, commodity, privacyMode }: OrderFormProps) => {
             </div>
           </div>
 
+          {fheLoading && (
+            <div className="text-sm text-muted-foreground text-center">
+              Initializing FHE encryption...
+            </div>
+          )}
+
+          {!instance && !fheLoading && (
+            <div className="text-sm text-destructive text-center">
+              FHE encryption service unavailable
+            </div>
+          )}
+
           <Button 
             type="submit"
             className={`w-full ${
@@ -126,7 +147,7 @@ const OrderForm = ({ type, commodity, privacyMode }: OrderFormProps) => {
                 ? "bg-success hover:bg-success/90 text-success-foreground" 
                 : "bg-destructive hover:bg-destructive/90 text-destructive-foreground"
             }`}
-            disabled={isPending}
+            disabled={isDisabled}
           >
             {isPending ? (
               <>
