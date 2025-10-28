@@ -699,35 +699,44 @@ export function useDecryptOrderData() {
       console.log('✅ Step 1 completed: Handle-contract pairs built');
       console.log('📊 Pairs count:', handleContractPairs.length);
 
-      console.log('🔄 Step 2: Generating keypair with wallet signature...');
-      try {
-        // Generate keypair with wallet signature
-        await instance.generateKeypair();
-        console.log('✅ Keypair generated successfully with wallet signature');
-      } catch (keypairError) {
-        console.warn('⚠️ Keypair generation failed, trying to continue:', keypairError);
-        // If keypair generation fails, we might need to sign a message first
-        try {
-          console.log('🔄 Attempting to sign message for keypair generation...');
-          const message = `Generate FHE keypair for order decryption: ${orderId}`;
-          const signature = await signer.signMessage(message);
-          console.log('✅ Message signed successfully');
-          
-          // Try generating keypair again after signing
-          await instance.generateKeypair();
-          console.log('✅ Keypair generated successfully after signing');
-        } catch (signError) {
-          console.error('❌ Failed to sign message or generate keypair:', signError);
-          throw new Error('Failed to generate FHE keypair. Please ensure wallet is connected and try again.');
-        }
-      }
+      console.log('🔄 Step 2: Creating keypair for decryption...');
+      const keypair = instance.generateKeypair();
+      console.log('✅ Step 2 completed: Keypair created');
 
-      console.log('🔄 Step 3: Decrypting handles...');
-      const result = await instance.userDecrypt(handleContractPairs);
-      console.log('✅ Step 3 completed: Handles decrypted');
+      console.log('🔄 Step 3: Creating EIP712 signature...');
+      const startTimeStamp = Math.floor(Date.now() / 1000).toString();
+      const durationDays = '10';
+      const contractAddresses = [CONTRACT_ADDRESS];
+
+      const eip712 = instance.createEIP712(
+        keypair.publicKey,
+        contractAddresses,
+        startTimeStamp,
+        durationDays
+      );
+
+      const signature = await signer.signTypedData(
+        eip712.domain,
+        { UserDecryptRequestVerification: eip712.types.UserDecryptRequestVerification },
+        eip712.message
+      );
+      console.log('✅ Step 3 completed: EIP712 signature created');
+
+      console.log('🔄 Step 4: Decrypting handles...');
+      const result = await instance.userDecrypt(
+        handleContractPairs,
+        keypair.privateKey,
+        keypair.publicKey,
+        signature.replace('0x', ''),
+        contractAddresses,
+        address,
+        startTimeStamp,
+        durationDays
+      );
+      console.log('✅ Step 4 completed: Handles decrypted');
       console.log('📊 Decryption result keys:', Object.keys(result || {}));
 
-      console.log('🔄 Step 3: Parsing decrypted data...');
+      console.log('🔄 Step 5: Parsing decrypted data...');
       const decryptedData = {
         orderId: result[encryptedHandles[0]]?.toString() || orderId.toString(),
         orderType: Number(result[encryptedHandles[1]]) || 0,
@@ -737,7 +746,7 @@ export function useDecryptOrderData() {
         success: true
       };
 
-      console.log('✅ Step 3 completed: Data parsed successfully');
+      console.log('✅ Step 5 completed: Data parsed successfully');
       console.log('📊 Decrypted data:', decryptedData);
       console.log('🎉 Decryption completed successfully!');
 
