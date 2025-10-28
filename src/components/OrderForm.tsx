@@ -34,10 +34,9 @@ interface OrderFormProps {
     icon: string;
   };
   privacyMode: boolean;
-  onOrderSubmitted?: (orderData: any) => void;
 }
 
-const OrderForm = ({ type, commodity, privacyMode, onOrderSubmitted }: OrderFormProps) => {
+const OrderForm = ({ type, commodity, privacyMode }: OrderFormProps) => {
   const { toast } = useToast();
   const { createOrder, isPending, error } = useCreateOrder();
   const { instance, isLoading: fheLoading } = useZamaInstance();
@@ -93,17 +92,6 @@ const OrderForm = ({ type, commodity, privacyMode, onOrderSubmitted }: OrderForm
         title: `${type === "buy" ? "Buy" : "Sell"} Order Placed`,
         description: `${data.amount} units of ${commodity.symbol} ${privacyMode ? "●●●●" : `($${orderValue.toLocaleString()})`}`,
       });
-      
-      // Call the order submitted callback
-      if (onOrderSubmitted) {
-        onOrderSubmitted({
-          type,
-          commodity,
-          amount: Number(data.amount),
-          price: Number(data.price),
-          orderValue
-        });
-      }
       
       reset();
     } catch (error) {

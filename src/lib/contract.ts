@@ -567,3 +567,50 @@ export function useDecryptPortfolioData(traderAddress?: string) {
 
   return { decryptPortfolioData, encryptedData, isLoading, error };
 }
+
+// Hook for getting order counter
+export function useOrderCounter() {
+  const { data, isLoading, error } = useReadContract({
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'orderCounter',
+  });
+
+  return {
+    count: data as bigint | undefined,
+    isLoading,
+    error,
+  };
+}
+
+// Hook for getting order data by ID
+export function useOrderData(orderId: number) {
+  const { data, isLoading, error } = useReadContract({
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'orders',
+    args: [BigInt(orderId)],
+  });
+
+  return {
+    orderData: data as [string, string, string, string, string, string, boolean, bigint] | undefined,
+    isLoading,
+    error,
+  };
+}
+
+// Hook for getting order encrypted data by ID
+export function useOrderEncryptedData(orderId: number) {
+  const { data, isLoading, error } = useReadContract({
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'getOrderEncryptedData',
+    args: [BigInt(orderId)],
+  });
+
+  return {
+    encryptedData: data as [string, string, string, string, string] | undefined,
+    isLoading,
+    error,
+  };
+}

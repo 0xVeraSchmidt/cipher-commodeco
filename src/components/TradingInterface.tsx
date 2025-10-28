@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TrendingUp, TrendingDown, Lock, Eye, EyeOff, Plus } from "lucide-react";
-import { useMarketData, usePortfolioInfo, useDecryptPortfolioData, useCommoditySymbols, useCommodityInfo } from "@/lib/contract";
+import { useMarketData, usePortfolioInfo, useDecryptPortfolioData, useCommoditySymbols, useCommodityInfo, useOrderCounter, useOrderData } from "@/lib/contract";
 import { useZamaInstance } from "@/hooks/useZamaInstance";
 import { useAccount } from "wagmi";
 import OrderForm from "./OrderForm";
@@ -56,7 +56,6 @@ const TradingInterface = () => {
   const [decryptedPortfolio, setDecryptedPortfolio] = useState<any>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [orders, setOrders] = useState<any[]>([]);
   const [newCommodity, setNewCommodity] = useState({
     symbol: '',
     name: '',
@@ -74,6 +73,9 @@ const TradingInterface = () => {
   const { marketData, isLoading: marketLoading } = useMarketData();
   const { portfolioInfo, isLoading: portfolioLoading } = usePortfolioInfo();
   const { decryptPortfolioData } = useDecryptPortfolioData();
+  
+  // Fetch orders from contract
+  const { count: orderCount, isLoading: orderCountLoading } = useOrderCounter();
 
   // Load commodities data from contract
   useEffect(() => {
@@ -131,6 +133,72 @@ const TradingInterface = () => {
 
     return () => clearInterval(interval);
   }, [symbols]);
+
+  // Component to display contract order data
+  const ContractOrderItem = ({ orderId }: { orderId: number }) => {
+    const { orderData, isLoading } = useOrderData(orderId);
+    
+    if (isLoading) {
+      return (
+        <div className="p-3 bg-muted rounded-md animate-pulse">
+          <div className="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
+          <div className="h-3 bg-gray-300 rounded w-1/2"></div>
+        </div>
+      );
+    }
+    
+    if (!orderData) {
+      return null;
+    }
+    
+    const [trader, orderIdBytes, orderTypeBytes, quantityBytes, priceBytes, commodityTypeBytes, isExecuted, timestamp] = orderData;
+    
+    // Convert timestamp to readable date
+    const orderDate = new Date(Number(timestamp) * 1000);
+    
+    // Get commodity info for display
+    const commoditySymbol = commodityTypeBytes ? ethers.toUtf8String(commodityTypeBytes) : 'Unknown';
+    const commodity = commodities.find(c => c.symbol === commoditySymbol);
+    
+    return (
+      <div className="p-3 bg-muted rounded-md">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-2">
+            <span className="text-lg">{commodity?.icon || '📦'}</span>
+            <span className="font-semibold">{commoditySymbol}</span>
+            <Badge variant={isExecuted ? 'default' : 'secondary'}>
+              {isExecuted ? 'EXECUTED' : 'PENDING'}
+            </Badge>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {orderDate.toLocaleTimeString()}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div>Trader: {trader.slice(0, 6)}...{trader.slice(-4)}</div>
+          <div>Order ID: {orderId}</div>
+          <div>Type: {orderTypeBytes ? ethers.toUtf8String(orderTypeBytes) : 'Unknown'}</div>
+          <div>Status: {isExecuted ? 'Completed' : 'Pending'}</div>
+        </div>
+        <div className="mt-2 flex items-center justify-between">
+          <Badge variant="outline" className="text-xs">
+            <Lock className="w-3 h-3 mr-1" />
+            FHE Encrypted
+          </Badge>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => {
+              // TODO: Implement order decryption
+              alert(`Decrypting order ${orderId}...`);
+            }}
+          >
+            Decrypt Order
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   // Component to display individual commodity with real price
   const CommodityItem = ({ commodity }: { commodity: CommodityData }) => {
@@ -245,14 +313,6 @@ const TradingInterface = () => {
     }
   };
 
-  const handleOrderSubmitted = (orderData: any) => {
-    setOrders(prev => [...prev, {
-      ...orderData,
-      id: Date.now(),
-      timestamp: new Date(),
-      status: 'pending'
-    }]);
-  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -423,49 +483,18 @@ const TradingInterface = () => {
               <CardTitle className="text-gold">Recent Orders</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {orders.length === 0 ? (
+              {orderCountLoading ? (
+                <div className="text-center text-muted-foreground py-4">
+                  Loading orders...
+                </div>
+              ) : orderCount && Number(orderCount) > 0 ? (
+                Array.from({ length: Number(orderCount) }, (_, i) => (
+                  <ContractOrderItem key={i} orderId={i} />
+                ))
+              ) : (
                 <div className="text-center text-muted-foreground py-4">
                   No orders yet
                 </div>
-              ) : (
-                orders.map((order) => (
-                  <div key={order.id} className="p-3 bg-muted rounded-md">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg">{order.commodity?.icon || '📦'}</span>
-                        <span className="font-semibold">{order.commodity?.symbol || 'N/A'}</span>
-                        <Badge variant={order.type === 'buy' ? 'default' : 'destructive'}>
-                          {order.type?.toUpperCase() || 'ORDER'}
-                        </Badge>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {order.timestamp?.toLocaleTimeString() || 'Unknown'}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>Amount: {order.amount || 'N/A'}</div>
-                      <div>Price: ${order.price || 'N/A'}</div>
-                      <div>Status: {order.status || 'Pending'}</div>
-                      <div>Value: ${order.amount && order.price ? (order.amount * order.price).toFixed(2) : 'N/A'}</div>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between">
-                      <Badge variant="outline" className="text-xs">
-                        <Lock className="w-3 h-3 mr-1" />
-                        FHE Encrypted
-                      </Badge>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          // TODO: Implement order decryption
-                          alert('Order decryption feature coming soon!');
-                        }}
-                      >
-                        Decrypt Order
-                      </Button>
-                    </div>
-                  </div>
-                ))
               )}
             </CardContent>
           </Card>
@@ -530,13 +559,11 @@ const TradingInterface = () => {
                   type="buy" 
                   commodity={selectedCommodity} 
                   privacyMode={privacyMode}
-                  onOrderSubmitted={handleOrderSubmitted}
                 />
                 <OrderForm 
                   type="sell" 
                   commodity={selectedCommodity} 
                   privacyMode={privacyMode}
-                  onOrderSubmitted={handleOrderSubmitted}
                 />
               </>
             ) : (
