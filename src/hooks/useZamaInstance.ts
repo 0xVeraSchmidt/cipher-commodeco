@@ -12,6 +12,10 @@ export function useZamaInstance() {
   const [isLoading, setIsLoading] = useState(!globalInstance);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
+  const [, forceUpdate] = useState({});
+
+  // 强制重新渲染函数
+  const triggerUpdate = () => forceUpdate({});
 
   useEffect(() => {
     mountedRef.current = true;
@@ -29,6 +33,8 @@ export function useZamaInstance() {
         if (mountedRef.current) {
           setInstance(inst);
           setIsLoading(false);
+          triggerUpdate(); // 强制重新渲染
+          console.log('🔄 FHE instance loaded from global cache');
         }
       }).catch((err) => {
         if (mountedRef.current) {
@@ -85,6 +91,8 @@ export function useZamaInstance() {
         
         if (mountedRef.current) {
           setInstance(zamaInstance);
+          setIsLoading(false);
+          triggerUpdate(); // 强制重新渲染
           console.log('🎉 FHE initialization completed successfully!');
           console.log('📊 Instance ready for encryption/decryption operations');
         }

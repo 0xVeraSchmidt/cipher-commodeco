@@ -43,6 +43,13 @@ const OrderForm = ({ type, commodity }: OrderFormProps) => {
   const { getPrice } = usePriceManager();
   const { address } = useAccount();
   
+  // Debug logging
+  console.log('OrderForm Debug:', {
+    instance: !!instance,
+    fheLoading,
+    instanceMethods: instance ? Object.keys(instance) : null
+  });
+  
   const {
     register,
     handleSubmit,
