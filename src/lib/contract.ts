@@ -818,12 +818,14 @@ export function useDecryptOrderData() {
       
       // Temporary fallback: Return mock decrypted data for demonstration
       console.log('🔄 Using fallback mock data for demonstration...');
+      const commoditySymbols = ['GOLD', 'OIL', 'WHEAT', 'COPPER'];
       const mockDecryptedData = {
         orderId: orderId.toString(),
         orderType: Math.floor(Math.random() * 2), // 0 or 1 (BUY/SELL)
         quantity: (Math.random() * 100 + 1).toFixed(2), // 1-100 with 2 decimals
         price: (Math.random() * 2000 + 100).toFixed(2), // $100-$2100
         commodityType: Math.floor(Math.random() * 4), // 0-3 for different commodities
+        symbol: commoditySymbols[Math.floor(Math.random() * 4)], // Add symbol field
         success: true,
         isMockData: true
       };
