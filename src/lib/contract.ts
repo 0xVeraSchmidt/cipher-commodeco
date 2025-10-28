@@ -3,25 +3,96 @@ import { parseEther } from 'viem';
 import { useZamaInstance } from '@/hooks/useZamaInstance';
 import { useEthersSigner } from '@/hooks/useEthersSigner';
 
-// Contract ABI for CipherCommodeco
+// Contract ABI for CipherCommodecoV2 - Updated to match deployed contract
 export const CONTRACT_ABI = [
   {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
     "inputs": [
-      {"name": "amount", "type": "bytes", "internalType": "externalEuint32"},
-      {"name": "price", "type": "bytes", "internalType": "externalEuint32"},
-      {"name": "isBuy", "type": "bool", "internalType": "ebool"},
-      {"name": "inputProof", "type": "bytes", "internalType": "bytes"}
+      {"indexed": false, "internalType": "string", "name": "symbol", "type": "string"},
+      {"indexed": false, "internalType": "string", "name": "name", "type": "string"},
+      {"indexed": false, "internalType": "uint256", "name": "initialPrice", "type": "uint256"}
     ],
-    "name": "createOrder",
-    "outputs": [{"name": "", "type": "uint256"}],
+    "name": "CommodityCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": false, "internalType": "uint256", "name": "orderId", "type": "uint256"},
+      {"indexed": false, "internalType": "address", "name": "trader", "type": "address"},
+      {"indexed": false, "internalType": "string", "name": "symbol", "type": "string"},
+      {"indexed": false, "internalType": "uint256", "name": "quantity", "type": "uint256"},
+      {"indexed": false, "internalType": "uint256", "name": "price", "type": "uint256"}
+    ],
+    "name": "OrderExecuted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": false, "internalType": "uint256", "name": "orderId", "type": "uint256"},
+      {"indexed": false, "internalType": "address", "name": "trader", "type": "address"},
+      {"indexed": false, "internalType": "string", "name": "symbol", "type": "string"},
+      {"indexed": false, "internalType": "uint256", "name": "quantity", "type": "uint256"},
+      {"indexed": false, "internalType": "uint256", "name": "price", "type": "uint256"}
+    ],
+    "name": "OrderPlaced",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": false, "internalType": "address", "name": "trader", "type": "address"},
+      {"indexed": false, "internalType": "uint256", "name": "totalValue", "type": "uint256"},
+      {"indexed": false, "internalType": "uint256", "name": "totalPnl", "type": "uint256"}
+    ],
+    "name": "PortfolioUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": false, "internalType": "address", "name": "trader", "type": "address"},
+      {"indexed": false, "internalType": "uint256", "name": "newReputation", "type": "uint256"}
+    ],
+    "name": "ReputationUpdated",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {"internalType": "string", "name": "_symbol", "type": "string"},
+      {"internalType": "string", "name": "_name", "type": "string"},
+      {"internalType": "uint256", "name": "_initialPrice", "type": "uint256"},
+      {"internalType": "uint256", "name": "_totalSupply", "type": "uint256"},
+      {"internalType": "bytes", "name": "inputProof", "type": "bytes"}
+    ],
+    "name": "createCommodity",
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
     "inputs": [
-      {"name": "orderId", "type": "uint256"},
-      {"name": "amount", "type": "bytes", "internalType": "externalEuint32"},
-      {"name": "inputProof", "type": "bytes", "internalType": "bytes"}
+      {"internalType": "string", "name": "_symbol", "type": "string"},
+      {"internalType": "uint256", "name": "_orderType", "type": "uint256"},
+      {"internalType": "bytes32[5]", "name": "_encryptedData", "type": "bytes32[5]"},
+      {"internalType": "bytes", "name": "_inputProof", "type": "bytes"}
+    ],
+    "name": "placeOrder",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "_orderId", "type": "uint256"},
+      {"internalType": "bytes32[5]", "name": "_encryptedData", "type": "bytes32[5]"},
+      {"internalType": "bytes", "name": "_inputProof", "type": "bytes"}
     ],
     "name": "executeOrder",
     "outputs": [],
@@ -29,63 +100,136 @@ export const CONTRACT_ABI = [
     "type": "function"
   },
   {
-    "inputs": [{"name": "orderId", "type": "uint256"}],
-    "name": "getOrderInfo",
+    "inputs": [
+      {"internalType": "address", "name": "_trader", "type": "address"}
+    ],
+    "name": "getPortfolioValue",
     "outputs": [
-      {"name": "amount", "type": "uint32"},
-      {"name": "price", "type": "uint32"},
-      {"name": "isBuy", "type": "bool"},
-      {"name": "isActive", "type": "bool"},
-      {"name": "trader", "type": "address"},
-      {"name": "timestamp", "type": "uint256"}
+      {"internalType": "bytes32", "name": "", "type": "bytes32"},
+      {"internalType": "bytes32", "name": "", "type": "bytes32"},
+      {"internalType": "bytes32", "name": "", "type": "bytes32"}
     ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{"name": "trader", "type": "address"}],
-    "name": "getPortfolioInfo",
+    "inputs": [
+      {"internalType": "address", "name": "_trader", "type": "address"},
+      {"internalType": "string", "name": "_symbol", "type": "string"}
+    ],
+    "name": "getCommodityHolding",
     "outputs": [
-      {"name": "totalValue", "type": "uint32"},
-      {"name": "profitLoss", "type": "uint32"},
-      {"name": "tradeCount", "type": "uint32"},
-      {"name": "isVerified", "type": "bool"}
+      {"internalType": "uint256", "name": "", "type": "uint256"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "_orderId", "type": "uint256"}
+    ],
+    "name": "getOrderEncryptedData",
+    "outputs": [
+      {"internalType": "bytes32", "name": "", "type": "bytes32"},
+      {"internalType": "bytes32", "name": "", "type": "bytes32"},
+      {"internalType": "bytes32", "name": "", "type": "bytes32"},
+      {"internalType": "bytes32", "name": "", "type": "bytes32"},
+      {"internalType": "bytes32", "name": "", "type": "bytes32"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "string", "name": "_symbol", "type": "string"},
+      {"internalType": "uint256", "name": "_newPrice", "type": "uint256"}
+    ],
+    "name": "updateCommodityPrice",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "string", "name": "_symbol", "type": "string"}
+    ],
+    "name": "getCommodityInfo",
+    "outputs": [
+      {"internalType": "string", "name": "", "type": "string"},
+      {"internalType": "string", "name": "", "type": "string"},
+      {"internalType": "uint256", "name": "", "type": "uint256"},
+      {"internalType": "bool", "name": "", "type": "bool"}
     ],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [],
-    "name": "getMarketData",
+    "name": "getAllCommoditySymbols",
     "outputs": [
-      {"name": "currentPrice", "type": "uint32"},
-      {"name": "volume24h", "type": "uint32"},
-      {"name": "priceChange", "type": "uint32"},
-      {"name": "lastUpdate", "type": "uint256"}
+      {"internalType": "string[]", "name": "", "type": "string[]"}
     ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{"name": "orderId", "type": "uint256"}],
-    "name": "getOrderEncryptedData",
+    "inputs": [
+      {"internalType": "address", "name": "_user", "type": "address"},
+      {"internalType": "bool", "name": "_canTrade", "type": "bool"}
+    ],
+    "name": "setACLPermissions",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
     "outputs": [
-      {"name": "amountHandle", "type": "bytes32"},
-      {"name": "priceHandle", "type": "bytes32"},
-      {"name": "isBuyHandle", "type": "bytes32"},
-      {"name": "isActiveHandle", "type": "bytes32"}
+      {"internalType": "address", "name": "", "type": "address"}
     ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{"name": "trader", "type": "address"}],
-    "name": "getPortfolioEncryptedData",
+    "inputs": [
+      {"internalType": "string", "name": "", "type": "string"}
+    ],
+    "name": "commodities",
     "outputs": [
-      {"name": "totalValueHandle", "type": "bytes32"},
-      {"name": "profitLossHandle", "type": "bytes32"},
-      {"name": "tradeCountHandle", "type": "bytes32"},
-      {"name": "isVerifiedHandle", "type": "bytes32"}
+      {"internalType": "string", "name": "commoditySymbol", "type": "string"},
+      {"internalType": "string", "name": "commodityName", "type": "string"},
+      {"internalType": "uint256", "name": "currentPrice", "type": "uint256"},
+      {"internalType": "bytes32", "name": "totalSupply", "type": "bytes32"},
+      {"internalType": "bytes32", "name": "marketCap", "type": "bytes32"},
+      {"internalType": "bool", "name": "isActive", "type": "bool"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "", "type": "uint256"}
+    ],
+    "name": "orders",
+    "outputs": [
+      {"internalType": "address", "name": "trader", "type": "address"},
+      {"internalType": "bytes32", "name": "orderId", "type": "bytes32"},
+      {"internalType": "bytes32", "name": "orderType", "type": "bytes32"},
+      {"internalType": "bytes32", "name": "quantity", "type": "bytes32"},
+      {"internalType": "bytes32", "name": "price", "type": "bytes32"},
+      {"internalType": "bytes32", "name": "commodityType", "type": "bytes32"},
+      {"internalType": "bool", "name": "isExecuted", "type": "bool"},
+      {"internalType": "uint256", "name": "timestamp", "type": "uint256"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "orderCounter",
+    "outputs": [
+      {"internalType": "uint256", "name": "", "type": "uint256"}
     ],
     "stateMutability": "view",
     "type": "function"
@@ -103,6 +247,16 @@ const convertToBytes32 = (handle: Uint8Array): string => {
   return `0x${hex}`;
 };
 
+// 字符串到数字的安全转换 (避免 32位溢出)
+const getStringValue = (str: string): number => {
+  const first6 = str.substring(0, 6);
+  let value = 0;
+  for (let i = 0; i < first6.length; i++) {
+    value = value * 100 + first6.charCodeAt(i);
+  }
+  return Math.min(value, 2000000000); // 限制在 32位范围内
+};
+
 // Hook for creating encrypted orders with FHE
 export function useCreateOrder() {
   const { writeContractAsync, isPending, error } = useWriteContract();
@@ -111,12 +265,13 @@ export function useCreateOrder() {
   const signer = useEthersSigner();
   
   const createOrder = async (
+    symbol: string,
     amount: number,
     price: number,
     isBuy: boolean
   ) => {
     console.log('🚀 Starting encrypted order creation...');
-    console.log('📊 Input parameters:', { amount, price, isBuy, address, hasInstance: !!instance, hasSigner: !!signer });
+    console.log('📊 Input parameters:', { symbol, amount, price, isBuy, address, hasInstance: !!instance, hasSigner: !!signer });
     
     if (!instance || !address || !signer) {
       const missing = [];
@@ -136,13 +291,24 @@ export function useCreateOrder() {
       console.log('✅ Step 1 completed: Encrypted input created');
       
       console.log('🔄 Step 2: Adding encrypted data...');
-      console.log('📊 Adding amount:', amount);
-      input.add32(BigInt(amount));
+      console.log('📊 Adding orderId:', 1); // Placeholder order ID
+      input.add32(BigInt(1)); // Order ID
+      
+      console.log('📊 Adding orderType:', isBuy ? 1 : 2);
+      input.add32(BigInt(isBuy ? 1 : 2)); // Order type
+      
+      console.log('📊 Adding quantity:', amount);
+      input.add32(BigInt(amount)); // Quantity
       
       // Convert price to cents to avoid decimal issues
       const priceInCents = Math.floor(price * 100);
       console.log('📊 Adding price (in cents):', priceInCents);
-      input.add32(BigInt(priceInCents));
+      input.add32(BigInt(priceInCents)); // Price
+      
+      // Convert symbol to number
+      const symbolValue = getStringValue(symbol);
+      console.log('📊 Adding symbol (converted):', symbolValue);
+      input.add32(BigInt(symbolValue)); // Commodity type
       
       console.log('✅ Step 2 completed: All data added to encrypted input');
       
@@ -160,12 +326,17 @@ export function useCreateOrder() {
       console.log('📊 Proof length:', proof.length);
       
       console.log('🔄 Step 5: Calling contract...');
-      // Call contract
+      // Call contract with new ABI format
       const result = await writeContractAsync({
         address: CONTRACT_ADDRESS as `0x${string}`,
         abi: CONTRACT_ABI,
-        functionName: 'createOrder',
-        args: [handles[0], handles[1], isBuy, proof]
+        functionName: 'placeOrder',
+        args: [
+          symbol,
+          BigInt(isBuy ? 1 : 2),
+          handles as [string, string, string, string, string],
+          proof as `0x${string}`
+        ]
       });
       
       console.log('✅ Step 5 completed: Contract call successful');
@@ -179,7 +350,7 @@ export function useCreateOrder() {
         name: err?.name,
         message: err?.message,
         stack: err?.stack,
-        inputParams: { amount, price, isBuy }
+        inputParams: { symbol, amount, price, isBuy }
       });
       throw err;
     }
@@ -231,6 +402,37 @@ export function useExecuteOrder() {
   };
 
   return { executeOrder, isPending, error };
+}
+
+// Hook for getting all commodity symbols
+export function useCommoditySymbols() {
+  const { data, isLoading, error } = useReadContract({
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'getAllCommoditySymbols',
+  });
+
+  return {
+    symbols: data as string[] | undefined,
+    isLoading,
+    error,
+  };
+}
+
+// Hook for getting commodity info
+export function useCommodityInfo(symbol: string) {
+  const { data, isLoading, error } = useReadContract({
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'getCommodityInfo',
+    args: [symbol],
+  });
+
+  return {
+    info: data as [string, string, bigint, boolean] | undefined,
+    isLoading,
+    error,
+  };
 }
 
 // Hook for reading order information
@@ -364,27 +566,4 @@ export function useDecryptPortfolioData(traderAddress?: string) {
   };
 
   return { decryptPortfolioData, encryptedData, isLoading, error };
-}
-
-// Hook for getting all commodity symbols
-export function useCommoditySymbols() {
-  const { data: symbols, isLoading, error } = useReadContract({
-    address: CONTRACT_ADDRESS as `0x${string}`,
-    abi: CONTRACT_ABI,
-    functionName: 'getAllCommoditySymbols'
-  });
-
-  return { symbols, isLoading, error };
-}
-
-// Hook for getting commodity info by symbol
-export function useCommodityInfo(symbol: string) {
-  const { data: info, isLoading, error } = useReadContract({
-    address: CONTRACT_ADDRESS as `0x${string}`,
-    abi: CONTRACT_ABI,
-    functionName: 'getCommodityInfo',
-    args: [symbol]
-  });
-
-  return { info, isLoading, error };
 }

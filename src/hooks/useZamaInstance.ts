@@ -30,8 +30,14 @@ export function useZamaInstance() {
         console.log('📊 SDK available:', !!window.relayerSDK);
         console.log('📊 initSDK function:', typeof window.relayerSDK?.initSDK);
         
-        await initSDK();
-        console.log('✅ Step 1 completed: FHE SDK initialized successfully');
+        try {
+          await initSDK();
+          console.log('✅ Step 1 completed: FHE SDK initialized successfully');
+        } catch (initError) {
+          console.warn('⚠️ FHE SDK initialization failed, trying alternative approach:', initError);
+          // Try to continue without explicit initSDK call
+          console.log('🔄 Attempting to create instance directly...');
+        }
 
         console.log('🔄 Step 2: Creating FHE instance with Sepolia config...');
         console.log('📊 SepoliaConfig:', SepoliaConfig);
