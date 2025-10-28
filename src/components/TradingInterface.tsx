@@ -56,12 +56,16 @@ const TradingInterface = () => {
   const [decryptedPortfolio, setDecryptedPortfolio] = useState<any>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [orders, setOrders] = useState<any[]>([]);
   const [newCommodity, setNewCommodity] = useState({
     symbol: '',
     name: '',
     price: '',
     supply: ''
   });
+  
+  // Price volatility state
+  const [priceVolatility, setPriceVolatility] = useState<{[key: string]: number}>({});
   
   // Fetch commodity symbols from contract
   const { symbols, isLoading: symbolsLoading } = useCommoditySymbols();
@@ -111,21 +115,40 @@ const TradingInterface = () => {
     loadCommodities();
   }, [symbols, selectedCommodity]);
 
+  // Price volatility effect - update prices every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPriceVolatility(prev => {
+        const newVolatility: {[key: string]: number} = {};
+        symbols?.forEach(symbol => {
+          // Generate random volatility between -0.5% and 0.5%
+          const volatility = (Math.random() - 0.5) * 0.01; // -0.5% to 0.5%
+          newVolatility[symbol] = volatility;
+        });
+        return newVolatility;
+      });
+    }, 5000); // Update every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [symbols]);
+
   // Component to display individual commodity with real price
   const CommodityItem = ({ commodity }: { commodity: CommodityData }) => {
     const { info, isLoading } = useCommodityInfo(commodity.symbol);
     
     // Convert price from wei to USD (assuming price is stored in wei)
-    const price = info ? parseFloat(ethers.formatEther(info[2])) : commodity.price;
+    const basePrice = info ? parseFloat(ethers.formatEther(info[2])) : commodity.price;
+    const volatility = priceVolatility[commodity.symbol] || 0;
+    const currentPrice = basePrice * (1 + volatility);
     const name = info ? info[1] : commodity.name;
     const isActive = info ? info[3] : commodity.isActive;
     
     // Debug logging
-    console.log(`Commodity ${commodity.symbol}:`, { info, price, name, isActive });
+    console.log(`Commodity ${commodity.symbol}:`, { info, basePrice, volatility, currentPrice, name, isActive });
 
     return (
       <div
-        onClick={() => setSelectedCommodity({ ...commodity, price, name, isActive })}
+        onClick={() => setSelectedCommodity({ ...commodity, price: currentPrice, name, isActive })}
         className={`p-3 rounded-lg cursor-pointer transition-all hover:bg-secondary/50 ${
           selectedCommodity?.symbol === commodity.symbol ? 'bg-secondary chart-glow' : ''
         }`}
@@ -144,17 +167,17 @@ const TradingInterface = () => {
           </div>
           <div className="text-right">
             <div className="font-mono text-sm">
-              {privacyMode ? "●●●●" : `$${price.toFixed(2)}`}
+              {privacyMode ? "●●●●" : `$${currentPrice.toFixed(2)}`}
             </div>
             <div className={`text-xs flex items-center ${
-              commodity.changePercent >= 0 ? 'text-green-500' : 'text-red-500'
+              volatility >= 0 ? 'text-green-500' : 'text-red-500'
             }`}>
-              {commodity.changePercent >= 0 ? (
+              {volatility >= 0 ? (
                 <TrendingUp className="w-3 h-3 mr-1" />
               ) : (
                 <TrendingDown className="w-3 h-3 mr-1" />
               )}
-              {privacyMode ? "●●" : `${commodity.changePercent.toFixed(2)}%`}
+              {privacyMode ? "●●" : `${(volatility * 100).toFixed(2)}%`}
             </div>
           </div>
         </div>
@@ -220,6 +243,15 @@ const TradingInterface = () => {
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleOrderSubmitted = (orderData: any) => {
+    setOrders(prev => [...prev, {
+      ...orderData,
+      id: Date.now(),
+      timestamp: new Date(),
+      status: 'pending'
+    }]);
   };
 
   return (
@@ -384,6 +416,59 @@ const TradingInterface = () => {
               )}
             </CardContent>
           </Card>
+
+          {/* Orders Section */}
+          <Card className="trading-card mt-6">
+            <CardHeader>
+              <CardTitle className="text-gold">Recent Orders</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {orders.length === 0 ? (
+                <div className="text-center text-muted-foreground py-4">
+                  No orders yet
+                </div>
+              ) : (
+                orders.map((order) => (
+                  <div key={order.id} className="p-3 bg-muted rounded-md">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-lg">{order.commodity?.icon || '📦'}</span>
+                        <span className="font-semibold">{order.commodity?.symbol || 'N/A'}</span>
+                        <Badge variant={order.type === 'buy' ? 'default' : 'destructive'}>
+                          {order.type?.toUpperCase() || 'ORDER'}
+                        </Badge>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {order.timestamp?.toLocaleTimeString() || 'Unknown'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>Amount: {order.amount || 'N/A'}</div>
+                      <div>Price: ${order.price || 'N/A'}</div>
+                      <div>Status: {order.status || 'Pending'}</div>
+                      <div>Value: ${order.amount && order.price ? (order.amount * order.price).toFixed(2) : 'N/A'}</div>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <Badge variant="outline" className="text-xs">
+                        <Lock className="w-3 h-3 mr-1" />
+                        FHE Encrypted
+                      </Badge>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          // TODO: Implement order decryption
+                          alert('Order decryption feature coming soon!');
+                        }}
+                      >
+                        Decrypt Order
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Chart and Trading */}
@@ -445,11 +530,13 @@ const TradingInterface = () => {
                   type="buy" 
                   commodity={selectedCommodity} 
                   privacyMode={privacyMode}
+                  onOrderSubmitted={handleOrderSubmitted}
                 />
                 <OrderForm 
                   type="sell" 
                   commodity={selectedCommodity} 
                   privacyMode={privacyMode}
+                  onOrderSubmitted={handleOrderSubmitted}
                 />
               </>
             ) : (
