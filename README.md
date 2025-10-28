@@ -82,83 +82,20 @@ npm run dev
 VITE_CHAIN_ID=11155111
 SEPOLIA_RPC_URL=https://1rpc.io/sepolia
 NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=your_project_id
-VITE_CONTRACT_ADDRESS=deployed_contract_address
+VITE_CONTRACT_ADDRESS=0x55353950560739ea7Cd48A7E090556425056fF52
 ```
 
 ## 📋 Smart Contract Details
 
 ### Contract Address
 ```
-Sepolia: 0x[CONTRACT_ADDRESS]
+Sepolia: 0x55353950560739ea7Cd48A7E090556425056fF52
 ```
 
-### Key Functions
-
-#### Order Management
-```solidity
-// Place encrypted order
-function placeOrder(
-    string memory _symbol,
-    uint256 _orderType,
-    bytes32[5] calldata _encryptedData,
-    bytes calldata _inputProof
-) external;
-
-// Get encrypted order data
-function getOrderEncryptedData(uint256 _orderId) external view returns (euint32, euint32, euint32, euint32, euint32);
-
-// Get order header (plaintext fields)
-function getOrderHeader(uint256 _orderId) external view returns (address, string memory, uint256);
-
-// Execute order
-function executeOrder(
-    uint256 _orderId,
-    bytes32[5] calldata _encryptedData,
-    bytes calldata _inputProof
-) external onlyOwner;
-```
-
-#### Commodity Management
-```solidity
-// Create new commodity
-function createCommodity(
-    string memory _symbol,
-    string memory _name,
-    uint256 _initialPrice,
-    uint256 _totalSupply,
-    bytes calldata inputProof
-) external;
-
-// Get commodity info
-function getCommodityInfo(string memory _symbol) external view returns (string memory, string memory, uint256, bool);
-
-// Update commodity price
-function updateCommodityPrice(string memory _symbol, uint256 _newPrice) external onlyOwner;
-
-// Get all commodity symbols
-function getAllCommoditySymbols() external view returns (string[] memory);
-```
-
-#### Portfolio Management
-```solidity
-// Get portfolio value (encrypted)
-function getPortfolioValue(address _trader) external view returns (euint64, euint64, euint32);
-
-// Get commodity holding (plaintext)
-function getCommodityHolding(address _trader, string memory _symbol) external view returns (uint256);
-```
-
-#### User Order Management
-```solidity
-// Get user's order IDs
-function getUserOrderIds(address _user) external view returns (uint256[] memory);
-
-// Get user's order IDs with pagination
-function getUserOrderIdsPaginated(address _user, uint256 offset, uint256 limit) external view returns (uint256[] memory);
-
-// Get order count
-function getOrderCount() external view returns (uint256);
-```
+**Contract Links:**
+- [Etherscan Sepolia](https://sepolia.etherscan.io/address/0x55353950560739ea7Cd48A7E090556425056fF52)
+- [Deployment Transaction](https://sepolia.etherscan.io/tx/0x74910bc27328a9136cfad380b75f87f1b4ea2a4e1394cbb7b10bc2c88cbb5ccc)
+- [Contract Source Code](./contracts/CipherCommodeco.sol)
 
 ## 🔐 FHE Implementation Details
 
