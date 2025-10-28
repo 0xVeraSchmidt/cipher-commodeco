@@ -174,7 +174,6 @@ const TradingInterface = () => {
     const [decrypting, setDecrypting] = useState(false);
     const [showDecrypted, setShowDecrypted] = useState(false);
     const [notAvailable, setNotAvailable] = useState(false);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
     
     // Only check availability once when orderData changes from loading to loaded
     useEffect(() => {
@@ -228,11 +227,12 @@ const TradingInterface = () => {
       try {
         const result = await decryptOrderData(orderId, encryptedData);
         console.log('🔍 Decryption result received:', result);
+        
+        // Set decrypted data directly, simple display
         setDecryptedData(result);
         setShowDecrypted(true);
-        setIsDialogOpen(true); // Open dialog after successful decryption
-        console.log('✅ Order decrypted successfully, dialog should open:', result);
-        console.log('🔍 Dialog state after setting:', { isDialogOpen: true, decryptedData: result });
+        
+        console.log('✅ Order decrypted successfully:', result);
       } catch (error) {
         console.error('Failed to decrypt order:', error);
         alert('Failed to decrypt order. Please check console for details.');
@@ -242,7 +242,8 @@ const TradingInterface = () => {
     };
     
     return (
-      <>
+      <div className="space-y-2">
+        {/* Order basic information */}
         <div className="p-3 bg-muted rounded-md">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -266,74 +267,68 @@ const TradingInterface = () => {
           </div>
         </div>
 
-        {/* Decryption Results Dialog */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center space-x-2">
-                <Lock className="h-5 w-5 text-gold" />
-                <span>Order #{orderId} - Decrypted Data</span>
-              </DialogTitle>
-            </DialogHeader>
-            {decryptedData && (
-              <div className="space-y-4">
-                {console.log('🔍 Rendering decrypted data in dialog:', decryptedData)}
-                {decryptedData.isMockData && (
-                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div className="flex items-center space-x-2 text-yellow-800">
-                      <span className="text-sm font-medium">⚠️ Demo Data</span>
-                    </div>
-                    <p className="text-xs text-yellow-700 mt-1">
-                      FHE decryption in development - This is demonstration data
-                    </p>
-                  </div>
-                )}
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm font-medium text-muted-foreground">Symbol:</span>
-                      <span className="text-sm font-semibold">{decryptedData.symbol || symbol}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm font-medium text-muted-foreground">Type:</span>
-                      <span className={`text-sm font-semibold ${decryptedData.orderType === 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {decryptedData.orderType === 0 ? 'BUY' : 'SELL'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm font-medium text-muted-foreground">Quantity:</span>
-                      <span className="text-sm font-semibold">{decryptedData.quantity || 'Unknown'}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm font-medium text-muted-foreground">Price:</span>
-                      <span className="text-sm font-semibold text-gold">${decryptedData.price || 'Unknown'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm font-medium text-muted-foreground">Trader:</span>
-                      <span className="text-sm font-mono">{trader.slice(0, 6)}...{trader.slice(-4)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm font-medium text-muted-foreground">Time:</span>
-                      <span className="text-sm">{orderDate.toLocaleString()}</span>
-                    </div>
-                  </div>
+        {/* Decrypted data display - inline display, simple and effective */}
+        {showDecrypted && decryptedData && (
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center space-x-2 mb-3">
+              <Lock className="h-4 w-4 text-green-600" />
+              <span className="text-sm font-semibold text-green-800">Order #{orderId} - Decrypted Data</span>
+            </div>
+            
+            {decryptedData.isMockData && (
+              <div className="p-2 bg-yellow-50 border border-yellow-200 rounded mb-3">
+                <div className="flex items-center space-x-2 text-yellow-800">
+                  <span className="text-xs font-medium">⚠️ Demo Data</span>
                 </div>
-                
-                <div className="pt-4 border-t">
-                  <div className="flex items-center justify-center space-x-2 text-xs text-muted-foreground">
-                    <Lock className="h-3 w-3" />
-                    <span>Data encrypted with FHE technology</span>
-                  </div>
-                </div>
+                <p className="text-xs text-yellow-700 mt-1">
+                  FHE decryption in development - This is demonstration data
+                </p>
               </div>
             )}
-          </DialogContent>
-        </Dialog>
-      </>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">Symbol:</span>
+                  <span className="text-xs font-semibold">{decryptedData.symbol || symbol}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">Type:</span>
+                  <span className={`text-xs font-semibold ${decryptedData.orderType === 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {decryptedData.orderType === 0 ? 'BUY' : 'SELL'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">Quantity:</span>
+                  <span className="text-xs font-semibold">{decryptedData.quantity || 'Unknown'}</span>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">Price:</span>
+                  <span className="text-xs font-semibold text-gold">${decryptedData.price || 'Unknown'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">Trader:</span>
+                  <span className="text-xs font-mono">{trader.slice(0, 6)}...{trader.slice(-4)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">Time:</span>
+                  <span className="text-xs">{orderDate.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-3 pt-2 border-t border-green-200">
+              <div className="flex items-center justify-center space-x-2 text-xs text-green-600">
+                <Lock className="h-3 w-3" />
+                <span>Data encrypted with FHE technology</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     );
   };
 

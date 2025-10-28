@@ -56,7 +56,7 @@ const updatePriceVolatility = () => {
 const startPriceUpdates = () => {
   if (priceUpdateInterval) return;
   
-  priceUpdateInterval = setInterval(updatePriceVolatility, 5000); // 每5秒更新
+  priceUpdateInterval = setInterval(updatePriceVolatility, 30000); // 每30秒更新
 };
 
 // 停止价格更新
