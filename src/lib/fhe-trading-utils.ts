@@ -371,13 +371,13 @@ export const createCommodity = async (
     
     const contract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
     
-    // Convert price to wei format
-    const priceInWei = Math.floor(initialPrice * 1e18);
+    // Convert price to cents format (multiply by 100)
+    const priceInCents = Math.floor(initialPrice * 100);
     
     const tx = await contract.createCommodity(
       symbol,
       name,
-      priceInWei,
+      priceInCents,
       totalSupply,
       "0x" // Empty proof for initialization
     );
@@ -417,7 +417,7 @@ export const getCommodityInfo = async (contract: Contract, symbol: string) => {
     return {
       symbol: info[0],
       name: info[1],
-      currentPrice: Number(info[2]) / 1e18, // Convert from wei
+      currentPrice: Number(info[2]) / 100, // Convert from cents to dollars
       isActive: info[3]
     };
   } catch (error) {

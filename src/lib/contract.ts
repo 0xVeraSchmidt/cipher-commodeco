@@ -214,6 +214,7 @@ export const CONTRACT_ABI = [
     "name": "orders",
     "outputs": [
       {"internalType": "address", "name": "trader", "type": "address"},
+      {"internalType": "string", "name": "symbol", "type": "string"},
       {"internalType": "bytes32", "name": "orderId", "type": "bytes32"},
       {"internalType": "bytes32", "name": "orderType", "type": "bytes32"},
       {"internalType": "bytes32", "name": "quantity", "type": "bytes32"},
@@ -229,6 +230,43 @@ export const CONTRACT_ABI = [
     "inputs": [],
     "name": "orderCounter",
     "outputs": [
+      {"internalType": "uint256", "name": "", "type": "uint256"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "address", "name": "_user", "type": "address"}
+    ],
+    "name": "getUserOrderIds",
+    "outputs": [
+      {"internalType": "uint256[]", "name": "", "type": "uint256[]"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "address", "name": "_user", "type": "address"},
+      {"internalType": "uint256", "name": "offset", "type": "uint256"},
+      {"internalType": "uint256", "name": "limit", "type": "uint256"}
+    ],
+    "name": "getUserOrderIdsPaginated",
+    "outputs": [
+      {"internalType": "uint256[]", "name": "", "type": "uint256[]"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "_orderId", "type": "uint256"}
+    ],
+    "name": "getOrderHeader",
+    "outputs": [
+      {"internalType": "address", "name": "", "type": "address"},
+      {"internalType": "string", "name": "", "type": "string"},
       {"internalType": "uint256", "name": "", "type": "uint256"}
     ],
     "stateMutability": "view",
@@ -546,7 +584,7 @@ export function useOrderData(orderId: number) {
   });
 
   return {
-    orderData: data as [string, string, string, string, string, string, boolean, bigint] | undefined,
+    orderData: data as any[] | undefined,
     isLoading,
     error,
   };
@@ -563,6 +601,60 @@ export function useOrderEncryptedData(orderId: number) {
 
   return {
     encryptedData: data as [string, string, string, string, string] | undefined,
+    isLoading,
+    error,
+  };
+}
+
+// Get user's order IDs
+export function useUserOrderIds(userAddress: string | undefined) {
+  const { data, isLoading, error } = useReadContract({
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'getUserOrderIds',
+    args: userAddress ? [userAddress as `0x${string}`] : undefined,
+    query: {
+      enabled: !!userAddress,
+    },
+  });
+
+  return {
+    orderIds: data as bigint[] | undefined,
+    isLoading,
+    error,
+  };
+}
+
+// Get user's order IDs with pagination
+export function useUserOrderIdsPaginated(userAddress: string | undefined, offset: number = 0, limit: number = 10) {
+  const { data, isLoading, error } = useReadContract({
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'getUserOrderIdsPaginated',
+    args: userAddress ? [userAddress as `0x${string}`, BigInt(offset), BigInt(limit)] : undefined,
+    query: {
+      enabled: !!userAddress,
+    },
+  });
+
+  return {
+    orderIds: data as bigint[] | undefined,
+    isLoading,
+    error,
+  };
+}
+
+// Get order header (trader, symbol, timestamp)
+export function useOrderHeader(orderId: number) {
+  const { data, isLoading, error } = useReadContract({
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'getOrderHeader',
+    args: [BigInt(orderId)],
+  });
+
+  return {
+    header: data as [string, string, bigint] | undefined,
     isLoading,
     error,
   };

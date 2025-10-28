@@ -6,15 +6,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TrendingUp, TrendingDown, Lock, Plus } from "lucide-react";
-import { useMarketData, usePortfolioInfo, useDecryptPortfolioData, useCommoditySymbols, useCommodityInfo, useOrderCounter, useOrderData, useOrderEncryptedData, useDecryptOrderData } from "@/lib/contract";
+import { useMarketData, usePortfolioInfo, useDecryptPortfolioData, useCommoditySymbols, useCommodityInfo, useOrderCounter, useOrderData, useOrderEncryptedData, useDecryptOrderData, useUserOrderIds } from "@/lib/contract";
 import { useZamaInstance } from "@/hooks/useZamaInstance";
 import { usePriceManager } from "@/hooks/usePriceManager";
 import { useAccount } from "wagmi";
+import { useEthersSigner } from '@/hooks/useEthersSigner';
 import OrderForm from "./OrderForm";
 import { ethers } from "ethers";
 import { createCommodity } from "@/lib/fhe-trading-utils";
-import { Contract } from "ethers";
-import { CONTRACT_ADDRESS, CONTRACT_ABI } from "@/lib/contract";
 
 // Commodity icon mapping
 const getCommodityIcon = (symbol: string) => {
@@ -76,13 +75,21 @@ const TradingInterface = () => {
   
   // Fetch orders from contract
   const { count: orderCount, isLoading: orderCountLoading } = useOrderCounter();
+  const { address } = useAccount();
+  const { orderIds: userOrderIds, isLoading: userOrderIdsLoading } = useUserOrderIds(address);
+  const signer = useEthersSigner();
 
-  // Stable computed order id list (newest first), contract ids start from 1
-  const totalOrders = orderCount ? Number(orderCount) : 0;
+  // Use user's order IDs if available, otherwise fall back to all orders
   const orderIds = useMemo(() => {
+    if (userOrderIds && userOrderIds.length > 0) {
+      // Convert bigint to number and reverse to show newest first
+      return userOrderIds.map(id => Number(id)).reverse();
+    }
+    // Fallback to all orders (for display purposes)
+    const totalOrders = orderCount ? Number(orderCount) : 0;
     if (!totalOrders) return [] as number[];
     return Array.from({ length: totalOrders }, (_, i) => totalOrders - i);
-  }, [totalOrders]);
+  }, [userOrderIds, orderCount]);
 
   // Load commodities data from contract (only when symbols change)
   useEffect(() => {
@@ -176,7 +183,7 @@ const TradingInterface = () => {
       );
     }
     
-    const [trader, orderIdBytes, orderTypeBytes, quantityBytes, priceBytes, commodityTypeBytes, isExecuted, timestamp] = orderData || [] as any;
+    const [trader, symbol, orderIdBytes, orderTypeBytes, quantityBytes, priceBytes, commodityTypeBytes, isExecuted, timestamp] = orderData || [] as any;
     
     // Add safety checks for undefined values
     if (!trader || !timestamp) {
@@ -191,7 +198,7 @@ const TradingInterface = () => {
     const orderDate = new Date(Number(timestamp) * 1000);
     
     // Get commodity info for display
-    const commoditySymbol = commodityTypeBytes ? ethers.toUtf8String(commodityTypeBytes) : 'Unknown';
+    const commoditySymbol = symbol || 'Unknown';
     const commodity = commodities.find(c => c.symbol === commoditySymbol);
     
     const handleDecryptOrder = async () => {
@@ -338,7 +345,6 @@ const TradingInterface = () => {
     );
   });
   const { instance } = useZamaInstance();
-  const { address } = useAccount();
 
   const handleDecryptPortfolio = async () => {
     if (!instance || !address) {
@@ -368,9 +374,12 @@ const TradingInterface = () => {
 
     setCreating(true);
     try {
-      const contract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, await instance.getSigner());
+      if (!signer) {
+        alert('Missing signer');
+        return;
+      }
       await createCommodity(
-        contract,
+        signer,
         newCommodity.symbol,
         newCommodity.name,
         parseFloat(newCommodity.price),
@@ -551,7 +560,7 @@ const TradingInterface = () => {
               <CardTitle className="text-gold">Recent Orders</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {orderCountLoading ? (
+              {userOrderIdsLoading || orderCountLoading ? (
                 <div className="text-center text-muted-foreground py-4">
                   Loading orders...
                 </div>
@@ -561,7 +570,7 @@ const TradingInterface = () => {
                 ))
               ) : (
                 <div className="text-center text-muted-foreground py-4">
-                  No orders yet
+                  {address ? 'No orders found for your account' : 'Please connect wallet to view orders'}
                 </div>
               )}
             </CardContent>
