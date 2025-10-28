@@ -154,6 +154,13 @@ const TradingInterface = () => {
     const [showDecrypted, setShowDecrypted] = useState(false);
     const [notAvailable, setNotAvailable] = useState(false);
     
+    useEffect(() => {
+      // 若contract返回空结构（常见于未存在的id），打标示
+      if (!orderData && !isLoading) {
+        setNotAvailable(true);
+      }
+    }, [orderData, isLoading]);
+    
     if (isLoading) {
       return (
         <div className="p-3 bg-muted rounded-md animate-pulse">
@@ -162,13 +169,6 @@ const TradingInterface = () => {
         </div>
       );
     }
-    
-    useEffect(() => {
-      // 若contract返回空结构（常见于未存在的id），打标示
-      if (!orderData && !isLoading) {
-        setNotAvailable(true);
-      }
-    }, [orderData, isLoading]);
 
     if (!orderData && notAvailable) {
       return (
