@@ -69,7 +69,7 @@ const OrderForm = ({ type, commodity, privacyMode }: OrderFormProps) => {
       }
       
       // Create encrypted order on blockchain using FHE
-      await createOrder(amount, validPrice, isBuy);
+      await createOrder(commodity.symbol, amount, validPrice, isBuy);
       
       const orderValue = amount * price;
       

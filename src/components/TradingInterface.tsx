@@ -69,7 +69,7 @@ const TradingInterface = () => {
           // For now, we'll use mock data for change and volume since these aren't in the contract
           // In a real implementation, you might want to add these to the contract
           const mockChange = Math.random() * 20 - 10; // Random change between -10 and 10
-          const mockChangePercent = Math.random() * 4 - 2; // Random change percent between -2% and 2%
+          const mockChangePercent = Math.random() * 1 + 1; // Random change percent between 1% and 2%
           const mockVolume = `${(Math.random() * 100).toFixed(1)}M`;
 
           commodityData.push({
