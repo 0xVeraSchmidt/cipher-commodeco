@@ -279,7 +279,7 @@ export const decryptPortfolioData = async (
     const handleContractPairs = [
       { handle: encryptedData[0], contractAddress: CONTRACT_ADDRESS },
       { handle: encryptedData[1], contractAddress: CONTRACT_ADDRESS },
-      { handle: handle: encryptedData[2], contractAddress: CONTRACT_ADDRESS }
+      { handle: encryptedData[2], contractAddress: CONTRACT_ADDRESS }
     ];
     console.log('✅ Step 2 completed: Portfolio handle-contract pairs built');
     
@@ -380,11 +380,11 @@ export const createCommodity = async (
   } catch (error) {
     console.error('❌ Failed to create commodity:', error);
     console.error('📊 Error details:', {
-      name: error?.name,
+      errorName: error?.name,
       message: error?.message,
       stack: error?.stack,
       symbol,
-      name,
+      commodityName: name,
       initialPrice,
       totalSupply
     });

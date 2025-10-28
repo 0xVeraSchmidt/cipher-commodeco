@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "compile": "hardhat compile",
     "deploy": "hardhat run scripts/deploy.cjs --network sepolia",
-    "verify": "hardhat verify --network sepolia"
+    "verify": "hardhat verify --network sepolia",
+    "initialize-commodities": "hardhat run scripts/initialize-commodities.cjs --network sepolia",
+    "test-trading": "hardhat run scripts/test-encrypted-trading.cjs --network sepolia"
   },
   "dependencies": {
     "@fhevm/hardhat-plugin": "^0.1.0",
