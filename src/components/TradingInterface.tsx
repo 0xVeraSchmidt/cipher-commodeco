@@ -378,11 +378,19 @@ const TradingInterface = () => {
         alert('Missing signer');
         return;
       }
+      
+      const priceValue = parseFloat(newCommodity.price);
+      console.log('📊 Creating commodity with price:', {
+        inputPrice: newCommodity.price,
+        parsedPrice: priceValue,
+        priceType: typeof priceValue
+      });
+      
       await createCommodity(
         signer,
         newCommodity.symbol,
         newCommodity.name,
-        parseFloat(newCommodity.price),
+        priceValue,
         parseInt(newCommodity.supply)
       );
       

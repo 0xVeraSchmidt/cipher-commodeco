@@ -366,13 +366,19 @@ export const createCommodity = async (
       symbol,
       name,
       initialPrice,
-      totalSupply
+      totalSupply,
+      priceType: typeof initialPrice
     });
     
     const contract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
     
     // Convert price to cents format (multiply by 100)
     const priceInCents = Math.floor(initialPrice * 100);
+    console.log('📊 Price conversion:', {
+      originalPrice: initialPrice,
+      priceInCents: priceInCents,
+      conversionFormula: `${initialPrice} * 100 = ${priceInCents}`
+    });
     
     const tx = await contract.createCommodity(
       symbol,
