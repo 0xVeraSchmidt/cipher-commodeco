@@ -293,7 +293,7 @@ const TradingInterface = () => {
     const priceData = getPrice(commodity.symbol);
     
     // Use price manager data or fallback to contract data
-    const basePrice = priceData?.basePrice || (info ? parseFloat(ethers.formatEther(info[2])) : commodity.price);
+    const basePrice = priceData?.basePrice || (info ? Number(info[2]) / 100 : commodity.price);
     const currentPrice = priceData?.currentPrice || commodity.price;
     const volatility = priceData?.volatility || 0;
     const name = priceData?.name || (info ? info[1] : commodity.name);
