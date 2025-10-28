@@ -108,14 +108,14 @@ export function useCreateOrder() {
   const { writeContractAsync, isPending, error } = useWriteContract();
   const { instance } = useZamaInstance();
   const { address } = useAccount();
-  const signerPromise = useEthersSigner();
+  const signer = useEthersSigner();
   
   const createOrder = async (
     amount: number,
     price: number,
     isBuy: boolean
   ) => {
-    if (!instance || !address || !signerPromise) {
+    if (!instance || !address || !signer) {
       throw new Error('Missing wallet or encryption service');
     }
 
@@ -155,13 +155,13 @@ export function useExecuteOrder() {
   const { writeContractAsync, isPending, error } = useWriteContract();
   const { instance } = useZamaInstance();
   const { address } = useAccount();
-  const signerPromise = useEthersSigner();
+  const signer = useEthersSigner();
   
   const executeOrder = async (
     orderId: number,
     amount: number
   ) => {
-    if (!instance || !address || !signerPromise) {
+    if (!instance || !address || !signer) {
       throw new Error('Missing wallet or encryption service');
     }
 
@@ -237,7 +237,7 @@ export function useMarketData() {
 export function useDecryptOrderData(orderId: number) {
   const { instance } = useZamaInstance();
   const { address } = useAccount();
-  const signerPromise = useEthersSigner();
+  const signer = useEthersSigner();
   
   const { data: encryptedData, isLoading, error } = useReadContract({
     address: CONTRACT_ADDRESS as `0x${string}`,
@@ -247,12 +247,12 @@ export function useDecryptOrderData(orderId: number) {
   });
 
   const decryptOrderData = async () => {
-    if (!instance || !address || !signerPromise || !encryptedData) {
+    if (!instance || !address || !signer || !encryptedData) {
       throw new Error('Missing required data for decryption');
     }
 
     try {
-      const signer = await signerPromise;
+      // signer is already available
       
       // Prepare handles for decryption
       const handleContractPairs = [
@@ -284,7 +284,7 @@ export function useDecryptOrderData(orderId: number) {
 export function useDecryptPortfolioData(traderAddress?: string) {
   const { instance } = useZamaInstance();
   const { address } = useAccount();
-  const signerPromise = useEthersSigner();
+  const signer = useEthersSigner();
   const trader = traderAddress || address;
   
   const { data: encryptedData, isLoading, error } = useReadContract({
@@ -295,12 +295,12 @@ export function useDecryptPortfolioData(traderAddress?: string) {
   });
 
   const decryptPortfolioData = async () => {
-    if (!instance || !address || !signerPromise || !encryptedData) {
+    if (!instance || !address || !signer || !encryptedData) {
       throw new Error('Missing required data for decryption');
     }
 
     try {
-      const signer = await signerPromise;
+      // signer is already available
       
       // Prepare handles for decryption
       const handleContractPairs = [

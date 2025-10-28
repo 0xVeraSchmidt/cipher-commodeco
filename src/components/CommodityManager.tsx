@@ -21,7 +21,7 @@ interface Commodity {
 
 export default function CommodityManager() {
   const { address } = useAccount();
-  const { getSigner } = useEthersSigner();
+  const signer = useEthersSigner();
   const [commodities, setCommodities] = useState<Commodity[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -37,12 +37,11 @@ export default function CommodityManager() {
 
   // Load commodities from contract
   const loadCommodities = async () => {
-    if (!getSigner) return;
+    if (!signer) return;
     
     setLoading(true);
     try {
       console.log('🔄 Loading commodities from contract...');
-      const signer = await getSigner();
       const contract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
       
       const symbols = await getAllCommoditySymbols(contract);
@@ -74,7 +73,7 @@ export default function CommodityManager() {
 
   // Create new commodity
   const handleCreateCommodity = async () => {
-    if (!getSigner || !newCommodity.symbol || !newCommodity.name || !newCommodity.price || !newCommodity.supply) {
+    if (!signer || !newCommodity.symbol || !newCommodity.name || !newCommodity.price || !newCommodity.supply) {
       alert('Please fill all fields');
       return;
     }
@@ -82,7 +81,6 @@ export default function CommodityManager() {
     setCreating(true);
     try {
       console.log('🔄 Creating new commodity...');
-      const signer = await getSigner();
       
       const txHash = await createCommodity(
         signer,
@@ -119,7 +117,7 @@ export default function CommodityManager() {
   // Load commodities on component mount
   React.useEffect(() => {
     loadCommodities();
-  }, [getSigner]);
+  }, [signer]);
 
   return (
     <div className="space-y-6">
