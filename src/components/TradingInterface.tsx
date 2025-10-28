@@ -1,65 +1,155 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Lock, Eye, EyeOff } from "lucide-react";
-import { useMarketData, usePortfolioInfo, useDecryptPortfolioData } from "@/lib/contract";
+import { useMarketData, usePortfolioInfo, useDecryptPortfolioData, useCommoditySymbols, useCommodityInfo } from "@/lib/contract";
 import { useZamaInstance } from "@/hooks/useZamaInstance";
 import { useAccount } from "wagmi";
 import OrderForm from "./OrderForm";
+import { ethers } from "ethers";
 
-const commodities = [
-  {
-    symbol: "GOLD",
-    name: "Gold Futures",
-    price: 1987.45,
-    change: 12.33,
-    changePercent: 0.62,
-    volume: "24.5M",
-    icon: "🥇",
-    color: "text-gold"
-  },
-  {
-    symbol: "OIL",
-    name: "Crude Oil",
-    price: 73.21,
-    change: -1.45,
-    changePercent: -1.94,
-    volume: "89.2M",
-    icon: "🛢️",
-    color: "text-oil"
-  },
-  {
-    symbol: "WHEAT",
-    name: "Wheat Futures",
-    price: 645.75,
-    change: 8.90,
-    changePercent: 1.40,
-    volume: "12.1M",
-    icon: "🌾",
-    color: "text-wheat"
-  },
-  {
-    symbol: "COPPER",
-    name: "Copper",
-    price: 8234.50,
-    change: -23.45,
-    changePercent: -0.28,
-    volume: "45.8M",
-    icon: "🔶",
-    color: "text-copper"
-  }
-];
+// Commodity icon mapping
+const getCommodityIcon = (symbol: string) => {
+  const icons: { [key: string]: string } = {
+    'GOLD': '🥇',
+    'OIL': '🛢️',
+    'WHEAT': '🌾',
+    'COPPER': '🔶'
+  };
+  return icons[symbol] || '📦';
+};
+
+// Commodity color mapping
+const getCommodityColor = (symbol: string) => {
+  const colors: { [key: string]: string } = {
+    'GOLD': 'text-gold',
+    'OIL': 'text-oil',
+    'WHEAT': 'text-wheat',
+    'COPPER': 'text-copper'
+  };
+  return colors[symbol] || 'text-gray-600';
+};
+
+interface CommodityData {
+  symbol: string;
+  name: string;
+  price: number;
+  isActive: boolean;
+  icon: string;
+  color: string;
+  change: number;
+  changePercent: number;
+  volume: string;
+}
 
 const TradingInterface = () => {
   const [privacyMode, setPrivacyMode] = useState(true);
-  const [selectedCommodity, setSelectedCommodity] = useState(commodities[0]);
+  const [commodities, setCommodities] = useState<CommodityData[]>([]);
+  const [selectedCommodity, setSelectedCommodity] = useState<CommodityData | null>(null);
   const [decryptedPortfolio, setDecryptedPortfolio] = useState<any>(null);
+  
+  // Fetch commodity symbols from contract
+  const { symbols, isLoading: symbolsLoading } = useCommoditySymbols();
   
   // Fetch real-time market data from contract
   const { marketData, isLoading: marketLoading } = useMarketData();
   const { portfolioInfo, isLoading: portfolioLoading } = usePortfolioInfo();
   const { decryptPortfolioData } = useDecryptPortfolioData();
+
+  // Load commodities data from contract
+  useEffect(() => {
+    const loadCommodities = async () => {
+      if (!symbols || symbols.length === 0) return;
+
+      const commodityData: CommodityData[] = [];
+      
+      for (const symbol of symbols) {
+        try {
+          // For now, we'll use mock data for change and volume since these aren't in the contract
+          // In a real implementation, you might want to add these to the contract
+          const mockChange = Math.random() * 20 - 10; // Random change between -10 and 10
+          const mockChangePercent = Math.random() * 4 - 2; // Random change percent between -2% and 2%
+          const mockVolume = `${(Math.random() * 100).toFixed(1)}M`;
+
+          commodityData.push({
+            symbol,
+            name: `${symbol} Futures`, // Default name
+            price: 0, // Will be updated from contract
+            isActive: true,
+            icon: getCommodityIcon(symbol),
+            color: getCommodityColor(symbol),
+            change: mockChange,
+            changePercent: mockChangePercent,
+            volume: mockVolume
+          });
+        } catch (error) {
+          console.error(`Error loading commodity ${symbol}:`, error);
+        }
+      }
+
+      setCommodities(commodityData);
+      if (commodityData.length > 0 && !selectedCommodity) {
+        setSelectedCommodity(commodityData[0]);
+      }
+    };
+
+    loadCommodities();
+  }, [symbols, selectedCommodity]);
+
+  // Component to display individual commodity with real price
+  const CommodityItem = ({ commodity }: { commodity: CommodityData }) => {
+    const { info, isLoading } = useCommodityInfo(commodity.symbol);
+    
+    const price = info ? parseFloat(ethers.formatEther(info[2])) : commodity.price;
+    const name = info ? info[1] : commodity.name;
+    const isActive = info ? info[3] : commodity.isActive;
+
+    return (
+      <div
+        onClick={() => setSelectedCommodity({ ...commodity, price, name, isActive })}
+        className={`p-3 rounded-lg cursor-pointer transition-all hover:bg-secondary/50 ${
+          selectedCommodity?.symbol === commodity.symbol ? 'bg-secondary chart-glow' : ''
+        }`}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <span className="text-2xl">{commodity.icon}</span>
+            <div>
+              <div className={`font-semibold ${commodity.color}`}>
+                {commodity.symbol}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {name}
+              </div>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="font-mono text-sm">
+              {privacyMode ? "●●●●" : `$${price.toFixed(2)}`}
+            </div>
+            <div className={`text-xs flex items-center ${
+              commodity.changePercent >= 0 ? 'text-green-500' : 'text-red-500'
+            }`}>
+              {commodity.changePercent >= 0 ? (
+                <TrendingUp className="w-3 h-3 mr-1" />
+              ) : (
+                <TrendingDown className="w-3 h-3 mr-1" />
+              )}
+              {privacyMode ? "●●" : `${commodity.changePercent.toFixed(2)}%`}
+            </div>
+          </div>
+        </div>
+        <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+          <span>{privacyMode ? "●●●●" : commodity.volume}</span>
+          <Badge variant="outline" className="text-xs">
+            <Lock className="w-3 h-3 mr-1" />
+            FHE
+          </Badge>
+        </div>
+      </div>
+    );
+  };
   const { instance } = useZamaInstance();
   const { address } = useAccount();
 
@@ -99,44 +189,20 @@ const TradingInterface = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {commodities.map((commodity) => (
-                <div
-                  key={commodity.symbol}
-                  onClick={() => setSelectedCommodity(commodity)}
-                  className={`p-3 rounded-lg cursor-pointer transition-all hover:bg-secondary/50 ${
-                    selectedCommodity.symbol === commodity.symbol ? 'bg-secondary chart-glow' : ''
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-2xl">{commodity.icon}</span>
-                      <div>
-                        <div className={`font-semibold ${commodity.color}`}>
-                          {commodity.symbol}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {commodity.name}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-mono text-sm">
-                        {privacyMode ? "●●●●" : `$${commodity.price}`}
-                      </div>
-                      <div className={`flex items-center text-xs ${
-                        commodity.change > 0 ? 'text-success' : 'text-destructive'
-                      }`}>
-                        {commodity.change > 0 ? (
-                          <TrendingUp className="h-3 w-3 mr-1" />
-                        ) : (
-                          <TrendingDown className="h-3 w-3 mr-1" />
-                        )}
-                        {privacyMode ? "●●%" : `${commodity.changePercent}%`}
-                      </div>
-                    </div>
-                  </div>
+              {symbolsLoading ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <p className="text-sm text-muted-foreground">Loading commodities...</p>
                 </div>
-              ))}
+              ) : commodities.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-sm text-muted-foreground">No commodities found</p>
+                </div>
+              ) : (
+                commodities.map((commodity) => (
+                  <CommodityItem key={commodity.symbol} commodity={commodity} />
+                ))
+              )}
             </CardContent>
           </Card>
 
@@ -256,16 +322,24 @@ const TradingInterface = () => {
 
           {/* Trading Controls */}
           <div className="grid grid-cols-2 gap-4">
-            <OrderForm 
-              type="buy" 
-              commodity={selectedCommodity} 
-              privacyMode={privacyMode}
-            />
-            <OrderForm 
-              type="sell" 
-              commodity={selectedCommodity} 
-              privacyMode={privacyMode}
-            />
+            {selectedCommodity ? (
+              <>
+                <OrderForm 
+                  type="buy" 
+                  commodity={selectedCommodity} 
+                  privacyMode={privacyMode}
+                />
+                <OrderForm 
+                  type="sell" 
+                  commodity={selectedCommodity} 
+                  privacyMode={privacyMode}
+                />
+              </>
+            ) : (
+              <div className="col-span-2 text-center py-8 text-muted-foreground">
+                Please select a commodity to start trading
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -329,3 +329,26 @@ export function useDecryptPortfolioData(traderAddress?: string) {
 
   return { decryptPortfolioData, encryptedData, isLoading, error };
 }
+
+// Hook for getting all commodity symbols
+export function useCommoditySymbols() {
+  const { data: symbols, isLoading, error } = useReadContract({
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'getAllCommoditySymbols'
+  });
+
+  return { symbols, isLoading, error };
+}
+
+// Hook for getting commodity info by symbol
+export function useCommodityInfo(symbol: string) {
+  const { data: info, isLoading, error } = useReadContract({
+    address: CONTRACT_ADDRESS as `0x${string}`,
+    abi: CONTRACT_ABI,
+    functionName: 'getCommodityInfo',
+    args: [symbol]
+  });
+
+  return { info, isLoading, error };
+}
