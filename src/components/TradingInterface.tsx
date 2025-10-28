@@ -111,10 +111,12 @@ const TradingInterface = () => {
           const priceData = getPrice(symbol);
           const volume = volumeMap[symbol] || '1.0M'; // Default volume if not found
 
+          // For new commodities not in price manager, use default values
+          // The actual price will be loaded by CommodityItem component via useCommodityInfo
           commodityData.push({
             symbol,
             name: priceData?.name || `${symbol} Futures`,
-            price: priceData?.currentPrice || 0,
+            price: priceData?.currentPrice || 0, // Will be overridden by CommodityItem
             isActive: true,
             icon: priceData?.icon || getCommodityIcon(symbol),
             color: priceData?.color || getCommodityColor(symbol),
@@ -292,9 +294,20 @@ const TradingInterface = () => {
     const { info, isLoading } = useCommodityInfo(commodity.symbol);
     const priceData = getPrice(commodity.symbol);
     
+    // Debug logging for new commodities
+    if (!priceData && info) {
+      console.log(`📊 Loading contract data for ${commodity.symbol}:`, {
+        symbol: info[0],
+        name: info[1],
+        priceInCents: info[2],
+        priceInDollars: Number(info[2]) / 100,
+        isActive: info[3]
+      });
+    }
+    
     // Use price manager data or fallback to contract data
     const basePrice = priceData?.basePrice || (info ? Number(info[2]) / 100 : commodity.price);
-    const currentPrice = priceData?.currentPrice || commodity.price;
+    const currentPrice = priceData?.currentPrice || (info ? Number(info[2]) / 100 : commodity.price);
     const volatility = priceData?.volatility || 0;
     const name = priceData?.name || (info ? info[1] : commodity.name);
     const isActive = info ? info[3] : commodity.isActive;
