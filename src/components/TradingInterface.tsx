@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TrendingUp, TrendingDown, Lock, Plus } from "lucide-react";
-import { useMarketData, usePortfolioInfo, useDecryptPortfolioData, useCommoditySymbols, useCommodityInfo, useOrderCounter, useOrderData, useOrderEncryptedData, useDecryptOrderData, useUserOrderIds } from "@/lib/contract";
+import { useMarketData, useCommoditySymbols, useCommodityInfo, useOrderCounter, useOrderData, useOrderEncryptedData, useDecryptOrderData, useUserOrderIds } from "@/lib/contract";
 import { useZamaInstance } from "@/hooks/useZamaInstance";
 import { usePriceManager } from "@/hooks/usePriceManager";
 import { useAccount } from "wagmi";
@@ -52,7 +52,6 @@ interface CommodityData {
 const TradingInterface = () => {
   const [commodities, setCommodities] = useState<CommodityData[]>([]);
   const [selectedCommodity, setSelectedCommodity] = useState<CommodityData | null>(null);
-  const [decryptedPortfolio, setDecryptedPortfolio] = useState<any>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newCommodity, setNewCommodity] = useState({
@@ -70,8 +69,6 @@ const TradingInterface = () => {
   
   // Fetch real-time market data from contract
   const { marketData, isLoading: marketLoading } = useMarketData();
-  const { portfolioInfo, isLoading: portfolioLoading } = usePortfolioInfo();
-  const { decryptPortfolioData } = useDecryptPortfolioData();
   
   // Fetch orders from contract
   const { count: orderCount, isLoading: orderCountLoading } = useOrderCounter();
@@ -230,10 +227,12 @@ const TradingInterface = () => {
       setDecrypting(true);
       try {
         const result = await decryptOrderData(orderId, encryptedData);
+        console.log('🔍 Decryption result received:', result);
         setDecryptedData(result);
         setShowDecrypted(true);
         setIsDialogOpen(true); // Open dialog after successful decryption
-        console.log('Order decrypted successfully:', result);
+        console.log('✅ Order decrypted successfully, dialog should open:', result);
+        console.log('🔍 Dialog state after setting:', { isDialogOpen: true, decryptedData: result });
       } catch (error) {
         console.error('Failed to decrypt order:', error);
         alert('Failed to decrypt order. Please check console for details.');
@@ -278,6 +277,7 @@ const TradingInterface = () => {
             </DialogHeader>
             {decryptedData && (
               <div className="space-y-4">
+                {console.log('🔍 Rendering decrypted data in dialog:', decryptedData)}
                 {decryptedData.isMockData && (
                   <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <div className="flex items-center space-x-2 text-yellow-800">
@@ -406,21 +406,6 @@ const TradingInterface = () => {
     );
   });
   const { instance } = useZamaInstance();
-
-  const handleDecryptPortfolio = async () => {
-    if (!instance || !address) {
-      alert('Please connect your wallet to decrypt portfolio data');
-      return;
-    }
-
-    try {
-      const decrypted = await decryptPortfolioData();
-      setDecryptedPortfolio(decrypted);
-    } catch (error) {
-      console.error('Failed to decrypt portfolio:', error);
-      alert('Failed to decrypt portfolio data');
-    }
-  };
 
   const handleCreateCommodity = async () => {
     if (!instance || !address) {
@@ -557,68 +542,6 @@ const TradingInterface = () => {
                 commodities.map((commodity) => (
                   <CommodityItem key={commodity.symbol} commodity={commodity} />
                 ))
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Portfolio Section */}
-          <Card className="trading-card mt-6">
-            <CardHeader>
-              <CardTitle className="text-gold">Portfolio</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {portfolioLoading ? (
-                <div className="text-center text-muted-foreground">
-                  Loading portfolio...
-                </div>
-              ) : portfolioInfo ? (
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm">Total Value:</span>
-                    <span className="font-mono text-sm">
-                      ${portfolioInfo[0] || 0}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm">Trade Count:</span>
-                    <span className="font-mono text-sm">
-                      {portfolioInfo[2] || 0}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm">Verified:</span>
-                    <span className="font-mono text-sm">
-                      {portfolioInfo[3] ? "Yes" : "No"}
-                    </span>
-                  </div>
-                  
-                  {instance && address && (
-                    <Button 
-                      onClick={handleDecryptPortfolio}
-                      variant="outline"
-                      size="sm"
-                      className="w-full mt-2"
-                    >
-                      Decrypt Portfolio
-                    </Button>
-                  )}
-                  
-                  {decryptedPortfolio && (
-                    <div className="mt-4 p-3 bg-muted rounded-md">
-                      <div className="text-sm font-semibold mb-2">Decrypted Data:</div>
-                      <div className="space-y-1 text-xs">
-                        <div>Total Value: {decryptedPortfolio.totalValue}</div>
-                        <div>Profit/Loss: {decryptedPortfolio.profitLoss}</div>
-                        <div>Trade Count: {decryptedPortfolio.tradeCount}</div>
-                        <div>Verified: {decryptedPortfolio.isVerified ? "Yes" : "No"}</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center text-muted-foreground">
-                  No portfolio data available
-                </div>
               )}
             </CardContent>
           </Card>
