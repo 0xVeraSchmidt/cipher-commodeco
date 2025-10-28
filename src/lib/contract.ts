@@ -579,12 +579,15 @@ export function useOrderData(orderId: number) {
   const { data, isLoading, error } = useReadContract({
     address: CONTRACT_ADDRESS as `0x${string}`,
     abi: CONTRACT_ABI,
-    functionName: 'orders',
+    functionName: 'getOrderHeader',
     args: [BigInt(orderId)],
+    query: {
+      enabled: orderId >= 0,
+    },
   });
 
   return {
-    orderData: data as any[] | undefined,
+    orderData: data as [string, string, bigint] | undefined,
     isLoading,
     error,
   };

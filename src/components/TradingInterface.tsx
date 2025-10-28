@@ -81,15 +81,31 @@ const TradingInterface = () => {
 
   // Use user's order IDs if available, otherwise fall back to all orders
   const orderIds = useMemo(() => {
+    console.log('📊 Order data debug:', {
+      userOrderIds,
+      userOrderIdsLength: userOrderIds?.length,
+      orderCount,
+      address,
+      userOrderIdsLoading,
+      orderCountLoading
+    });
+    
     if (userOrderIds && userOrderIds.length > 0) {
       // Convert bigint to number and reverse to show newest first
-      return userOrderIds.map(id => Number(id)).reverse();
+      const convertedIds = userOrderIds.map(id => Number(id)).reverse();
+      console.log('📊 Using user order IDs:', convertedIds);
+      return convertedIds;
     }
     // Fallback to all orders (for display purposes)
     const totalOrders = orderCount ? Number(orderCount) : 0;
-    if (!totalOrders) return [] as number[];
-    return Array.from({ length: totalOrders }, (_, i) => totalOrders - i);
-  }, [userOrderIds, orderCount]);
+    if (!totalOrders) {
+      console.log('📊 No orders found, returning empty array');
+      return [] as number[];
+    }
+    const fallbackIds = Array.from({ length: totalOrders }, (_, i) => totalOrders - i);
+    console.log('📊 Using fallback order IDs:', fallbackIds);
+    return fallbackIds;
+  }, [userOrderIds, orderCount, address, userOrderIdsLoading, orderCountLoading]);
 
   // Load commodities data from contract (only when symbols change)
   useEffect(() => {
@@ -164,11 +180,19 @@ const TradingInterface = () => {
     const [notAvailable, setNotAvailable] = useState(false);
     
     useEffect(() => {
+      console.log(`📊 ContractOrderItem for order ${orderId}:`, {
+        orderData,
+        isLoading,
+        encryptedData,
+        encryptedLoading
+      });
+      
       // 若contract返回空结构（常见于未存在的id），打标示
       if (!orderData && !isLoading) {
+        console.log(`📊 Order ${orderId} not available`);
         setNotAvailable(true);
       }
-    }, [orderData, isLoading]);
+    }, [orderData, isLoading, orderId]);
     
     if (isLoading) {
       return (
@@ -181,17 +205,18 @@ const TradingInterface = () => {
 
     if (!orderData && notAvailable) {
       return (
-        <div className="p-3 bg-muted rounded-md text-xs text-muted-foreground">not available</div>
+        <div className="p-3 bg-muted rounded-md text-xs text-muted-foreground">
+          Order #{orderId} - Not Available
+        </div>
       );
     }
     
-    const [trader, symbol, orderIdBytes, orderTypeBytes, quantityBytes, priceBytes, commodityTypeBytes, isExecuted, timestamp] = orderData || [] as any;
+    const [trader, symbol, timestamp] = orderData || [] as [string, string, bigint];
     
-    // Add safety checks for undefined values
     if (!trader || !timestamp) {
       return (
         <div className="p-3 bg-muted rounded-md text-xs text-muted-foreground">
-          Order data incomplete
+          Order #{orderId} - Data Incomplete
         </div>
       );
     }
@@ -225,66 +250,38 @@ const TradingInterface = () => {
     
     return (
       <div className="p-3 bg-muted rounded-md">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <span className="text-lg">{commodity?.icon || '📦'}</span>
-            <span className="font-semibold">{commoditySymbol}</span>
-            <Badge variant={isExecuted ? 'default' : 'secondary'}>
-              {isExecuted ? 'EXECUTED' : 'PENDING'}
-            </Badge>
+            <span className="text-sm font-medium">Order #{orderId}</span>
+            <span className="text-xs text-muted-foreground">
+              {orderDate.toLocaleTimeString()}
+            </span>
           </div>
-          <span className="text-xs text-muted-foreground">
-            {orderDate.toLocaleTimeString()}
-          </span>
+          <div className="flex items-center space-x-2">
+            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+              FHE Encrypted
+            </span>
+            <button
+              onClick={handleDecryptOrder}
+              disabled={decrypting || !encryptedData}
+              className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded hover:bg-green-200 disabled:opacity-50"
+            >
+              {decrypting ? 'Decrypting...' : 'Decrypt Order'}
+            </button>
+          </div>
         </div>
         
-        {!showDecrypted ? (
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div>Trader: {trader.slice(0, 6)}...{trader.slice(-4)}</div>
-            <div>Order ID: {orderId}</div>
-            <div>Type: {orderTypeBytes ? ethers.toUtf8String(orderTypeBytes) : 'Unknown'}</div>
-            <div>Status: {isExecuted ? 'Completed' : 'Pending'}</div>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <div className="text-sm font-semibold text-green-600">Decrypted Order Data:</div>
-            <div className="grid grid-cols-2 gap-2 text-sm bg-green-50 p-2 rounded">
-              <div>Order ID: {decryptedData?.orderId || 'N/A'}</div>
-              <div>Type: {decryptedData?.orderType === 0 ? 'BUY' : 'SELL'}</div>
-              <div>Quantity: {decryptedData?.quantity || 'N/A'}</div>
-              <div>Price: ${decryptedData?.price || 'N/A'}</div>
-              <div>Commodity Type: {decryptedData?.commodityType || 'N/A'}</div>
-              <div>Total Value: ${decryptedData?.quantity && decryptedData?.price ? (decryptedData.quantity * decryptedData.price).toFixed(2) : 'N/A'}</div>
+        {showDecrypted && decryptedData && (
+          <div className="mt-3 p-2 bg-green-50 rounded border border-green-200">
+            <div className="text-xs text-green-800">
+              <div><strong>Symbol:</strong> {decryptedData.symbol || symbol}</div>
+              <div><strong>Type:</strong> {decryptedData.orderType || 'Unknown'}</div>
+              <div><strong>Quantity:</strong> {decryptedData.quantity || 'Unknown'}</div>
+              <div><strong>Price:</strong> ${decryptedData.price || 'Unknown'}</div>
+              <div><strong>Trader:</strong> {trader.slice(0, 6)}...{trader.slice(-4)}</div>
             </div>
           </div>
         )}
-        
-        <div className="mt-2 flex items-center justify-between">
-          <Badge variant="outline" className="text-xs">
-            <Lock className="w-3 h-3 mr-1" />
-            FHE Encrypted
-          </Badge>
-          <div className="flex space-x-2">
-            {!showDecrypted ? (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleDecryptOrder}
-                disabled={decrypting || encryptedLoading}
-              >
-                {decrypting ? 'Decrypting...' : 'Decrypt Order'}
-              </Button>
-            ) : (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowDecrypted(false)}
-              >
-                Hide Details
-              </Button>
-            )}
-          </div>
-        </div>
       </div>
     );
   };
