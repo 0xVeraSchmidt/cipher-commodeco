@@ -96,33 +96,68 @@ Sepolia: 0x[CONTRACT_ADDRESS]
 
 #### Order Management
 ```solidity
-// Create encrypted order
-function createOrder(
-    bytes32 encryptedOrderType,
-    bytes32 encryptedQuantity,
-    bytes32 encryptedPrice,
-    bytes32 encryptedCommodityType
-) external returns (uint256 orderId);
-
-// Get order data
-function getOrder(uint256 orderId) external view returns (address, string memory, uint256);
+// Place encrypted order
+function placeOrder(
+    string memory _symbol,
+    uint256 _orderType,
+    bytes32[5] calldata _encryptedData,
+    bytes calldata _inputProof
+) external;
 
 // Get encrypted order data
-function getEncryptedOrderData(uint256 orderId) external view returns (bytes32[5] memory);
+function getOrderEncryptedData(uint256 _orderId) external view returns (euint32, euint32, euint32, euint32, euint32);
+
+// Get order header (plaintext fields)
+function getOrderHeader(uint256 _orderId) external view returns (address, string memory, uint256);
+
+// Execute order
+function executeOrder(
+    uint256 _orderId,
+    bytes32[5] calldata _encryptedData,
+    bytes calldata _inputProof
+) external onlyOwner;
 ```
 
 #### Commodity Management
 ```solidity
 // Create new commodity
 function createCommodity(
-    string memory symbol,
-    string memory name,
-    uint256 priceInCents,
-    uint256 supply
+    string memory _symbol,
+    string memory _name,
+    uint256 _initialPrice,
+    uint256 _totalSupply,
+    bytes calldata inputProof
 ) external;
 
 // Get commodity info
-function getCommodityInfo(string memory symbol) external view returns (string memory, string memory, uint256, bool);
+function getCommodityInfo(string memory _symbol) external view returns (string memory, string memory, uint256, bool);
+
+// Update commodity price
+function updateCommodityPrice(string memory _symbol, uint256 _newPrice) external onlyOwner;
+
+// Get all commodity symbols
+function getAllCommoditySymbols() external view returns (string[] memory);
+```
+
+#### Portfolio Management
+```solidity
+// Get portfolio value (encrypted)
+function getPortfolioValue(address _trader) external view returns (euint64, euint64, euint32);
+
+// Get commodity holding (plaintext)
+function getCommodityHolding(address _trader, string memory _symbol) external view returns (uint256);
+```
+
+#### User Order Management
+```solidity
+// Get user's order IDs
+function getUserOrderIds(address _user) external view returns (uint256[] memory);
+
+// Get user's order IDs with pagination
+function getUserOrderIdsPaginated(address _user, uint256 offset, uint256 limit) external view returns (uint256[] memory);
+
+// Get order count
+function getOrderCount() external view returns (uint256);
 ```
 
 ## 🔐 FHE Implementation Details
@@ -143,19 +178,28 @@ const encryptedQuantity = await zamaInstance.encrypt32(quantity);
 const encryptedPrice = await zamaInstance.encrypt32(price);
 const encryptedCommodityType = await zamaInstance.encrypt32(commodityType);
 
-// Store encrypted data on-chain
-await contract.createOrder(
+// Prepare encrypted data array
+const encryptedData = [
     encryptedOrderType,
     encryptedQuantity,
     encryptedPrice,
-    encryptedCommodityType
+    encryptedCommodityType,
+    // Additional encrypted field if needed
+];
+
+// Place encrypted order on-chain
+await contract.placeOrder(
+    symbol,
+    orderType,
+    encryptedData,
+    inputProof
 );
 ```
 
 #### Order Decryption
 ```typescript
 // Retrieve encrypted data from contract
-const encryptedData = await contract.getEncryptedOrderData(orderId);
+const encryptedOrderData = await contract.getOrderEncryptedData(orderId);
 
 // Decrypt using user's private key and signature
 const decryptedData = await zamaInstance.userDecrypt(
@@ -167,10 +211,11 @@ const decryptedData = await zamaInstance.userDecrypt(
 
 // Parse decrypted values
 const orderData = {
-    orderType: Number(decryptedData[0]),
-    quantity: Number(decryptedData[1]),
-    price: Number(decryptedData[2]),
-    commodityType: Number(decryptedData[3])
+    orderId: Number(decryptedData[0]),
+    orderType: Number(decryptedData[1]),
+    quantity: Number(decryptedData[2]),
+    price: Number(decryptedData[3]),
+    commodityType: Number(decryptedData[4])
 };
 ```
 
