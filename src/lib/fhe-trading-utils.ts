@@ -3,23 +3,35 @@ import { CONTRACT_ADDRESS, CONTRACT_ABI } from './contract';
 
 // FHE Handle 转换工具 - 参考fantasy-vault-trade
 export const convertToBytes32 = (handle: any): string => {
+  console.log('🔄 Converting handle to hex format...');
+  console.log('📊 Handle type:', typeof handle);
+  console.log('📊 Handle value:', handle);
+  
   let hex = '';
   if (handle instanceof Uint8Array) {
     hex = `0x${Array.from(handle).map(b => b.toString(16).padStart(2, '0')).join('')}`;
+    console.log('📊 Converted from Uint8Array');
   } else if (typeof handle === 'string') {
     hex = handle.startsWith('0x') ? handle : `0x${handle}`;
+    console.log('📊 Converted from string');
   } else if (Array.isArray(handle)) {
     hex = `0x${handle.map(b => b.toString(16).padStart(2, '0')).join('')}`;
+    console.log('📊 Converted from array');
   } else {
     hex = `0x${handle.toString()}`;
+    console.log('📊 Converted from other type');
   }
   
   // 确保恰好 32 字节 (66 字符包含 0x)
   if (hex.length < 66) {
     hex = hex.padEnd(66, '0');
+    console.log('📊 Padded to 66 characters');
   } else if (hex.length > 66) {
     hex = hex.substring(0, 66);
+    console.log('📊 Truncated to 66 characters');
   }
+  
+  console.log('✅ Handle conversion completed:', hex.substring(0, 10) + '...');
   return hex;
 };
 

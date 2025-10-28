@@ -276,9 +276,9 @@ const TradingInterface = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center space-x-2">
-                  <span className="text-2xl">{selectedCommodity.icon}</span>
-                  <span className={selectedCommodity.color}>
-                    {selectedCommodity.name}
+                  <span className="text-2xl">{selectedCommodity?.icon || '📦'}</span>
+                  <span className={selectedCommodity?.color || 'text-gray-600'}>
+                    {selectedCommodity?.name || 'Select Commodity'}
                   </span>
                 </CardTitle>
                 <div className="flex items-center space-x-2">
@@ -296,7 +296,7 @@ const TradingInterface = () => {
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="chart-glow bg-gold/10 rounded-full w-32 h-32 flex items-center justify-center">
                     <span className="text-4xl font-bold text-gold">
-                      {privacyMode ? "●●●●" : `$${selectedCommodity.price}`}
+                      {privacyMode ? "●●●●" : `$${selectedCommodity?.price?.toFixed(2) || '0.00'}`}
                     </span>
                   </div>
                 </div>

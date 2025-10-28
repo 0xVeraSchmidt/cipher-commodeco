@@ -115,25 +115,51 @@ export function useCreateOrder() {
     price: number,
     isBuy: boolean
   ) => {
+    console.log('🚀 Starting encrypted order creation...');
+    console.log('📊 Input parameters:', { amount, price, isBuy, address, hasInstance: !!instance, hasSigner: !!signer });
+    
     if (!instance || !address || !signer) {
-      throw new Error('Missing wallet or encryption service');
+      const missing = [];
+      if (!instance) missing.push('FHE instance');
+      if (!address) missing.push('wallet address');
+      if (!signer) missing.push('signer');
+      throw new Error(`Missing: ${missing.join(', ')}`);
     }
 
     try {
+      console.log('🔄 Step 1: Creating encrypted input...');
+      console.log('📊 Contract address:', CONTRACT_ADDRESS);
+      console.log('📊 User address:', address);
+      
       // Create encrypted input
       const input = instance.createEncryptedInput(CONTRACT_ADDRESS, address);
+      console.log('✅ Step 1 completed: Encrypted input created');
+      
+      console.log('🔄 Step 2: Adding encrypted data...');
+      console.log('📊 Adding amount:', amount);
       input.add32(BigInt(amount));
+      
       // Convert price to cents to avoid decimal issues
       const priceInCents = Math.floor(price * 100);
+      console.log('📊 Adding price (in cents):', priceInCents);
       input.add32(BigInt(priceInCents));
       
-      const encryptedInput = await input.encrypt();
+      console.log('✅ Step 2 completed: All data added to encrypted input');
       
+      console.log('🔄 Step 3: Encrypting data...');
+      const encryptedInput = await input.encrypt();
+      console.log('✅ Step 3 completed: Data encrypted successfully');
+      console.log('📊 Encrypted handles count:', encryptedInput.handles.length);
+      
+      console.log('🔄 Step 4: Converting handles to proper format...');
       // Convert handles to proper format
       const handles = encryptedInput.handles.map(convertToBytes32);
       const proof = `0x${Array.from(encryptedInput.inputProof)
         .map(b => b.toString(16).padStart(2, '0')).join('')}`;
+      console.log('✅ Step 4 completed: Handles converted');
+      console.log('📊 Proof length:', proof.length);
       
+      console.log('🔄 Step 5: Calling contract...');
       // Call contract
       const result = await writeContractAsync({
         address: CONTRACT_ADDRESS as `0x${string}`,
@@ -142,9 +168,19 @@ export function useCreateOrder() {
         args: [handles[0], handles[1], isBuy, proof]
       });
       
+      console.log('✅ Step 5 completed: Contract call successful');
+      console.log('📊 Transaction hash:', result);
+      console.log('🎉 Encrypted order creation completed successfully!');
+      
       return result;
     } catch (err) {
-      console.error('Error creating order:', err);
+      console.error('❌ Error creating encrypted order:', err);
+      console.error('📊 Error details:', {
+        name: err?.name,
+        message: err?.message,
+        stack: err?.stack,
+        inputParams: { amount, price, isBuy }
+      });
       throw err;
     }
   };
