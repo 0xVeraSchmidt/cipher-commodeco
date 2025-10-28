@@ -4,12 +4,25 @@
 
 Experience the future of decentralized trading with **Fully Homomorphic Encryption (FHE)** technology. Trade commodities with complete privacy while maintaining full transparency where it matters.
 
+## 🎥 Demo Video
+
+[![Cipher Commodeco Demo](https://img.shields.io/badge/📹%20Watch%20Demo-Video%20Demo-blue)](./cipher-commodeco.mov)
+
+**Watch the full demo**: [cipher-commodeco.mov](./cipher-commodeco.mov) (13MB)
+
+The demo showcases:
+- 🔐 **FHE-encrypted order creation** with real-time price updates
+- 📊 **Commodity trading interface** with GOLD, OIL, WHEAT, COPPER
+- 🔓 **Order decryption** revealing encrypted trading data
+- ⚡ **Real-time price volatility** (-0.5% to +0.5% every 60 seconds)
+- 🛡️ **Privacy-preserving** trading without exposing strategies
+
 ## ✨ What Makes Us Different
 
 ### 🛡️ **Zero-Knowledge Trading**
 - Your trading strategies remain completely private
 - Market makers cannot front-run your orders
-- Portfolio positions are encrypted until settlement
+- Order details are encrypted until decryption by authorized users
 
 ### ⚡ **Real-Time FHE Operations**
 - Execute complex trading algorithms on encrypted data
@@ -52,9 +65,9 @@ npm run dev
 | Feature | Description | Benefit |
 |---------|-------------|---------|
 | **Encrypted Orders** | All order data is homomorphically encrypted | Complete trading privacy |
-| **Private Portfolios** | Portfolio values encrypted until withdrawal | No position exposure |
-| **Reputation System** | Trust scores calculated on encrypted data | Fair reputation without revealing history |
-| **Market Analytics** | Real-time data with privacy guarantees | Informed decisions without data leakage |
+| **Order Decryption** | Authorized users can decrypt their own orders | Selective data revelation |
+| **Real-time Prices** | Dynamic commodity pricing with volatility simulation | Realistic trading environment |
+| **Portfolio Management** | Encrypted position tracking | Private wealth management |
 
 ## 🛠️ Development
 
@@ -72,11 +85,45 @@ NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=your_project_id
 VITE_CONTRACT_ADDRESS=deployed_contract_address
 ```
 
-### Smart Contract Features
-- **Order Management**: Encrypted order creation and execution
-- **Portfolio Tracking**: Private position management
-- **Reputation System**: Trust-based trading with encrypted scores
-- **Market Data**: Encrypted price feeds and analytics
+## 📋 Smart Contract Details
+
+### Contract Address
+```
+Sepolia: 0x[CONTRACT_ADDRESS]
+```
+
+### Key Functions
+
+#### Order Management
+```solidity
+// Create encrypted order
+function createOrder(
+    bytes32 encryptedOrderType,
+    bytes32 encryptedQuantity,
+    bytes32 encryptedPrice,
+    bytes32 encryptedCommodityType
+) external returns (uint256 orderId);
+
+// Get order data
+function getOrder(uint256 orderId) external view returns (address, string memory, uint256);
+
+// Get encrypted order data
+function getEncryptedOrderData(uint256 orderId) external view returns (bytes32[5] memory);
+```
+
+#### Commodity Management
+```solidity
+// Create new commodity
+function createCommodity(
+    string memory symbol,
+    string memory name,
+    uint256 priceInCents,
+    uint256 supply
+) external;
+
+// Get commodity info
+function getCommodityInfo(string memory symbol) external view returns (string memory, string memory, uint256, bool);
+```
 
 ## 🔐 FHE Implementation Details
 
@@ -85,6 +132,47 @@ VITE_CONTRACT_ADDRESS=deployed_contract_address
 2. **Contract Storage**: Encrypted data is stored on-chain with ACL permissions
 3. **Computation**: FHE operations are performed on encrypted data
 4. **Decryption**: Only authorized users can decrypt their own data
+
+### Key Data Encryption/Decryption Logic
+
+#### Order Creation (Encryption)
+```typescript
+// Encrypt order data before sending to contract
+const encryptedOrderType = await zamaInstance.encrypt32(orderType);
+const encryptedQuantity = await zamaInstance.encrypt32(quantity);
+const encryptedPrice = await zamaInstance.encrypt32(price);
+const encryptedCommodityType = await zamaInstance.encrypt32(commodityType);
+
+// Store encrypted data on-chain
+await contract.createOrder(
+    encryptedOrderType,
+    encryptedQuantity,
+    encryptedPrice,
+    encryptedCommodityType
+);
+```
+
+#### Order Decryption
+```typescript
+// Retrieve encrypted data from contract
+const encryptedData = await contract.getEncryptedOrderData(orderId);
+
+// Decrypt using user's private key and signature
+const decryptedData = await zamaInstance.userDecrypt(
+    encryptedHandles,
+    privateKey,
+    signature,
+    contractAddresses
+);
+
+// Parse decrypted values
+const orderData = {
+    orderType: Number(decryptedData[0]),
+    quantity: Number(decryptedData[1]),
+    price: Number(decryptedData[2]),
+    commodityType: Number(decryptedData[3])
+};
+```
 
 ### Key Components
 - **useZamaInstance**: FHE SDK initialization and management
@@ -125,6 +213,35 @@ npm run preview
 1. Connect GitHub repository
 2. Configure environment variables
 3. Deploy automatically
+
+## 🔄 Price Management System
+
+### Real-time Price Updates
+- **Refresh Rate**: Every 60 seconds
+- **Volatility Range**: -0.5% to +0.5%
+- **Supported Commodities**: GOLD, OIL, WHEAT, COPPER
+- **Price Calculation**: `newPrice = basePrice * (1 + volatility)`
+
+### Price Manager Implementation
+```typescript
+// Price update logic
+const updatePriceVolatility = () => {
+  Object.keys(globalPrices).forEach(symbol => {
+    const commodity = globalPrices[symbol];
+    const volatility = (Math.random() - 0.5) * 0.01; // -0.5% to 0.5%
+    const newPrice = commodity.basePrice * (1 + volatility);
+    
+    globalPrices[symbol] = {
+      ...commodity,
+      currentPrice: newPrice,
+      volatility: volatility
+    };
+  });
+};
+
+// Start price updates every 60 seconds
+setInterval(updatePriceVolatility, 60000);
+```
 
 ## 🤝 Contributing
 
@@ -170,7 +287,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Validate FHE handles are 32 bytes before contract calls
 - Use BigInt for numerical values to avoid overflow
 
+### Current Implementation Status
+- ✅ **FHE Order Encryption**: Orders are encrypted before storage
+- ✅ **Order Decryption**: Users can decrypt their own orders
+- ✅ **Real-time Pricing**: Dynamic commodity price updates
+- ✅ **Mock Data Fallback**: Demonstration data when FHE authorization fails
+- ✅ **Responsive UI**: Clean, modern trading interface
+- 🔄 **FHE Authorization**: Working on proper ACL permission setup
+
 ---
 
 **Built with ❤️ for the future of private trading**
-# Test push
