@@ -80,14 +80,13 @@ const TradingInterface = () => {
   const signer = useEthersSigner();
 
   // Use user's order IDs if available, otherwise fall back to all orders
+  // Only update when userOrderIds actually changes (not on loading state changes)
   const orderIds = useMemo(() => {
     console.log('📊 Order data debug:', {
       userOrderIds,
       userOrderIdsLength: userOrderIds?.length,
       orderCount,
-      address,
-      userOrderIdsLoading,
-      orderCountLoading
+      address
     });
     
     if (userOrderIds && userOrderIds.length > 0) {
@@ -105,7 +104,7 @@ const TradingInterface = () => {
     const fallbackIds = Array.from({ length: totalOrders }, (_, i) => totalOrders - i);
     console.log('📊 Using fallback order IDs:', fallbackIds);
     return fallbackIds;
-  }, [userOrderIds, orderCount, address, userOrderIdsLoading, orderCountLoading]);
+  }, [userOrderIds, orderCount, address]); // Removed loading states to prevent constant refresh
 
   // Load commodities data from contract (only when symbols change)
   useEffect(() => {
@@ -179,20 +178,13 @@ const TradingInterface = () => {
     const [showDecrypted, setShowDecrypted] = useState(false);
     const [notAvailable, setNotAvailable] = useState(false);
     
+    // Only check availability once when orderData changes from loading to loaded
     useEffect(() => {
-      console.log(`📊 ContractOrderItem for order ${orderId}:`, {
-        orderData,
-        isLoading,
-        encryptedData,
-        encryptedLoading
-      });
-      
-      // 若contract返回空结构（常见于未存在的id），打标示
-      if (!orderData && !isLoading) {
+      if (!isLoading && !orderData) {
         console.log(`📊 Order ${orderId} not available`);
         setNotAvailable(true);
       }
-    }, [orderData, isLoading, orderId]);
+    }, [isLoading, orderData, orderId]);
     
     if (isLoading) {
       return (
@@ -580,7 +572,20 @@ const TradingInterface = () => {
           {/* Orders Section */}
           <Card className="trading-card mt-6">
             <CardHeader>
-              <CardTitle className="text-gold">Recent Orders</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-gold">Recent Orders</CardTitle>
+                <button
+                  onClick={() => {
+                    // Force refresh by updating a dummy state
+                    setCommodities(prev => [...prev]);
+                    console.log('🔄 Manual refresh triggered');
+                  }}
+                  className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
+                  title="Refresh orders manually"
+                >
+                  🔄 Refresh
+                </button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
               {userOrderIdsLoading || orderCountLoading ? (
