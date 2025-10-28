@@ -78,17 +78,25 @@ const TradingInterface = () => {
   // Fetch orders from contract
   const { count: orderCount, isLoading: orderCountLoading } = useOrderCounter();
 
-  // Load commodities data from contract
+  // Load commodities data from contract (only when symbols change)
   useEffect(() => {
     const loadCommodities = async () => {
       if (!symbols || symbols.length === 0) return;
 
       const commodityData: CommodityData[] = [];
       
+      // Fixed volume data for each commodity
+      const volumeMap: { [key: string]: string } = {
+        'GOLD': '24.5M',
+        'OIL': '81.8M', 
+        'WHEAT': '0.3M',
+        'COPPER': '95.7M'
+      };
+      
       for (const symbol of symbols) {
         try {
           const priceData = getPrice(symbol);
-          const mockVolume = `${(Math.random() * 100).toFixed(1)}M`;
+          const volume = volumeMap[symbol] || '1.0M'; // Default volume if not found
 
           commodityData.push({
             symbol,
@@ -99,7 +107,7 @@ const TradingInterface = () => {
             color: priceData?.color || getCommodityColor(symbol),
             change: priceData ? (priceData.currentPrice - priceData.basePrice) : 0,
             changePercent: priceData ? (priceData.volatility * 100) : 0,
-            volume: mockVolume
+            volume: volume
           });
         } catch (error) {
           console.error(`Error loading commodity ${symbol}:`, error);
@@ -113,7 +121,7 @@ const TradingInterface = () => {
     };
 
     loadCommodities();
-  }, [symbols, selectedCommodity, prices]);
+  }, [symbols]); // Remove prices dependency to prevent infinite loop
 
   // Update selected commodity when prices change
   useEffect(() => {
@@ -128,7 +136,7 @@ const TradingInterface = () => {
         } : null);
       }
     }
-  }, [prices, selectedCommodity]);
+  }, [prices]); // Remove selectedCommodity dependency to prevent infinite loop
 
   // Component to display contract order data
   const ContractOrderItem = ({ orderId }: { orderId: number }) => {
