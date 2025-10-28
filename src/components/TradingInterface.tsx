@@ -274,8 +274,13 @@ const TradingInterface = () => {
         {showDecrypted && decryptedData && (
           <div className="mt-3 p-2 bg-green-50 rounded border border-green-200">
             <div className="text-xs text-green-800">
+              {decryptedData.isMockData && (
+                <div className="mb-2 p-1 bg-yellow-100 text-yellow-800 rounded text-center">
+                  ⚠️ Demo Data - FHE decryption in development
+                </div>
+              )}
               <div><strong>Symbol:</strong> {decryptedData.symbol || symbol}</div>
-              <div><strong>Type:</strong> {decryptedData.orderType || 'Unknown'}</div>
+              <div><strong>Type:</strong> {decryptedData.orderType === 0 ? 'BUY' : 'SELL'}</div>
               <div><strong>Quantity:</strong> {decryptedData.quantity || 'Unknown'}</div>
               <div><strong>Price:</strong> ${decryptedData.price || 'Unknown'}</div>
               <div><strong>Trader:</strong> {trader.slice(0, 6)}...{trader.slice(-4)}</div>
