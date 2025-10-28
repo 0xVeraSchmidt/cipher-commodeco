@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,6 +16,10 @@ const orderSchema = z.object({
   amount: z.string().min(1, "Amount is required").refine(
     (val) => !isNaN(Number(val)) && Number(val) > 0,
     "Amount must be a positive number"
+  ),
+  price: z.string().min(1, "Price is required").refine(
+    (val) => !isNaN(Number(val)) && Number(val) > 0,
+    "Price must be a positive number"
   ),
 });
 
@@ -43,9 +47,21 @@ const OrderForm = ({ type, commodity, privacyMode }: OrderFormProps) => {
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<OrderFormData>({
     resolver: zodResolver(orderSchema),
+    defaultValues: {
+      amount: "",
+      price: commodity.price > 0 ? commodity.price.toString() : "",
+    },
   });
+
+  // Update price when commodity changes
+  useEffect(() => {
+    if (commodity.price > 0) {
+      setValue("price", commodity.price.toString());
+    }
+  }, [commodity.price, setValue]);
 
   const onSubmit = async (data: OrderFormData) => {
     if (!instance || !address) {
@@ -59,17 +75,16 @@ const OrderForm = ({ type, commodity, privacyMode }: OrderFormProps) => {
 
     try {
       const amount = Number(data.amount);
-      const price = commodity.price;
+      const price = Number(data.price);
       const isBuy = type === "buy";
       
-      // Ensure price is a valid number and convert to integer if needed
-      const validPrice = typeof price === 'number' ? price : parseFloat(price);
-      if (isNaN(validPrice)) {
+      // Ensure price is a valid number
+      if (isNaN(price) || price <= 0) {
         throw new Error('Invalid price format');
       }
       
       // Create encrypted order on blockchain using FHE
-      await createOrder(commodity.symbol, amount, validPrice, isBuy);
+      await createOrder(commodity.symbol, amount, price, isBuy);
       
       const orderValue = amount * price;
       
@@ -118,12 +133,19 @@ const OrderForm = ({ type, commodity, privacyMode }: OrderFormProps) => {
           </div>
           
           <div className="space-y-2">
-            <Label>Current Price</Label>
-            <div className="p-2 bg-muted rounded-md">
-              <span className="font-mono text-sm">
-                {privacyMode ? "●●●●" : `$${commodity.price.toLocaleString()}`}
-              </span>
-            </div>
+            <Label htmlFor={`${type}-price`}>Price (USD)</Label>
+            <Input
+              id={`${type}-price`}
+              type="number"
+              step="0.01"
+              placeholder="0.00"
+              {...register("price")}
+              className="font-mono"
+              disabled={isDisabled}
+            />
+            {errors.price && (
+              <p className="text-sm text-destructive">{errors.price.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">

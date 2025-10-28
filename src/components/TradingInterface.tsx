@@ -2,12 +2,18 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, Lock, Eye, EyeOff } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { TrendingUp, TrendingDown, Lock, Eye, EyeOff, Plus } from "lucide-react";
 import { useMarketData, usePortfolioInfo, useDecryptPortfolioData, useCommoditySymbols, useCommodityInfo } from "@/lib/contract";
 import { useZamaInstance } from "@/hooks/useZamaInstance";
 import { useAccount } from "wagmi";
 import OrderForm from "./OrderForm";
 import { ethers } from "ethers";
+import { createCommodity } from "@/lib/fhe-trading-utils";
+import { Contract } from "ethers";
+import { CONTRACT_ADDRESS, CONTRACT_ABI } from "@/lib/contract";
 
 // Commodity icon mapping
 const getCommodityIcon = (symbol: string) => {
@@ -48,6 +54,14 @@ const TradingInterface = () => {
   const [commodities, setCommodities] = useState<CommodityData[]>([]);
   const [selectedCommodity, setSelectedCommodity] = useState<CommodityData | null>(null);
   const [decryptedPortfolio, setDecryptedPortfolio] = useState<any>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newCommodity, setNewCommodity] = useState({
+    symbol: '',
+    name: '',
+    price: '',
+    supply: ''
+  });
   
   // Fetch commodity symbols from contract
   const { symbols, isLoading: symbolsLoading } = useCommoditySymbols();
@@ -101,9 +115,13 @@ const TradingInterface = () => {
   const CommodityItem = ({ commodity }: { commodity: CommodityData }) => {
     const { info, isLoading } = useCommodityInfo(commodity.symbol);
     
+    // Convert price from wei to USD (assuming price is stored in wei)
     const price = info ? parseFloat(ethers.formatEther(info[2])) : commodity.price;
     const name = info ? info[1] : commodity.name;
     const isActive = info ? info[3] : commodity.isActive;
+    
+    // Debug logging
+    console.log(`Commodity ${commodity.symbol}:`, { info, price, name, isActive });
 
     return (
       <div
@@ -168,6 +186,42 @@ const TradingInterface = () => {
     }
   };
 
+  const handleCreateCommodity = async () => {
+    if (!instance || !address) {
+      alert('Please connect your wallet to create commodities');
+      return;
+    }
+
+    if (!newCommodity.symbol || !newCommodity.name || !newCommodity.price || !newCommodity.supply) {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const contract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, await instance.getSigner());
+      await createCommodity(
+        contract,
+        newCommodity.symbol,
+        newCommodity.name,
+        parseFloat(newCommodity.price),
+        parseInt(newCommodity.supply)
+      );
+      
+      setShowCreateDialog(false);
+      setNewCommodity({ symbol: '', name: '', price: '', supply: '' });
+      alert('Commodity created successfully!');
+      
+      // Reload commodities
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to create commodity:', error);
+      alert('Failed to create commodity');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -178,14 +232,77 @@ const TradingInterface = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-gold">Commodity Markets</CardTitle>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPrivacyMode(!privacyMode)}
-                  className="border-gold/20"
-                >
-                  {privacyMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="border-gold/20">
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Create New Commodity</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="symbol">Symbol</Label>
+                          <Input
+                            id="symbol"
+                            value={newCommodity.symbol}
+                            onChange={(e) => setNewCommodity({...newCommodity, symbol: e.target.value})}
+                            placeholder="e.g., SILVER"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="name">Name</Label>
+                          <Input
+                            id="name"
+                            value={newCommodity.name}
+                            onChange={(e) => setNewCommodity({...newCommodity, name: e.target.value})}
+                            placeholder="e.g., Silver Futures"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="price">Initial Price (USD)</Label>
+                          <Input
+                            id="price"
+                            type="number"
+                            step="0.01"
+                            value={newCommodity.price}
+                            onChange={(e) => setNewCommodity({...newCommodity, price: e.target.value})}
+                            placeholder="e.g., 25.50"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="supply">Total Supply</Label>
+                          <Input
+                            id="supply"
+                            type="number"
+                            value={newCommodity.supply}
+                            onChange={(e) => setNewCommodity({...newCommodity, supply: e.target.value})}
+                            placeholder="e.g., 1000000"
+                          />
+                        </div>
+                        <Button 
+                          onClick={handleCreateCommodity} 
+                          disabled={creating}
+                          className="w-full"
+                        >
+                          {creating ? 'Creating...' : 'Create Commodity'}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPrivacyMode(!privacyMode)}
+                    className="border-gold/20"
+                  >
+                    {privacyMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
