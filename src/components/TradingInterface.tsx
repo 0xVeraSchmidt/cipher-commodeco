@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { TrendingUp, TrendingDown, Lock, Eye, EyeOff, Plus } from "lucide-react";
+import { TrendingUp, TrendingDown, Lock, Plus } from "lucide-react";
 import { useMarketData, usePortfolioInfo, useDecryptPortfolioData, useCommoditySymbols, useCommodityInfo, useOrderCounter, useOrderData, useOrderEncryptedData, useDecryptOrderData } from "@/lib/contract";
 import { useZamaInstance } from "@/hooks/useZamaInstance";
 import { usePriceManager } from "@/hooks/usePriceManager";
@@ -51,7 +51,6 @@ interface CommodityData {
 }
 
 const TradingInterface = () => {
-  const [privacyMode, setPrivacyMode] = useState(true);
   const [commodities, setCommodities] = useState<CommodityData[]>([]);
   const [selectedCommodity, setSelectedCommodity] = useState<CommodityData | null>(null);
   const [decryptedPortfolio, setDecryptedPortfolio] = useState<any>(null);
@@ -288,7 +287,7 @@ const TradingInterface = () => {
           </div>
           <div className="text-right">
             <div className="font-mono text-sm">
-              {privacyMode ? "●●●●" : `$${currentPrice.toFixed(2)}`}
+              ${currentPrice.toFixed(2)}
             </div>
             <div className={`text-xs flex items-center ${
               volatility >= 0 ? 'text-green-500' : 'text-red-500'
@@ -298,12 +297,12 @@ const TradingInterface = () => {
               ) : (
                 <TrendingDown className="w-3 h-3 mr-1" />
               )}
-              {privacyMode ? "●●" : `${(volatility * 100).toFixed(2)}%`}
+              ${(volatility * 100).toFixed(2)}%
             </div>
           </div>
         </div>
         <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-          <span>{privacyMode ? "●●●●" : commodity.volume}</span>
+          <span>{commodity.volume}</span>
           <Badge variant="outline" className="text-xs">
             <Lock className="w-3 h-3 mr-1" />
             FHE
@@ -377,77 +376,67 @@ const TradingInterface = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-gold">Commodity Markets</CardTitle>
-                <div className="flex items-center space-x-2">
-                  <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="border-gold/20">
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Create New Commodity</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="symbol">Symbol</Label>
-                          <Input
-                            id="symbol"
-                            value={newCommodity.symbol}
-                            onChange={(e) => setNewCommodity({...newCommodity, symbol: e.target.value})}
-                            placeholder="e.g., SILVER"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="name">Name</Label>
-                          <Input
-                            id="name"
-                            value={newCommodity.name}
-                            onChange={(e) => setNewCommodity({...newCommodity, name: e.target.value})}
-                            placeholder="e.g., Silver Futures"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="price">Initial Price (USD)</Label>
-                          <Input
-                            id="price"
-                            type="number"
-                            step="0.01"
-                            value={newCommodity.price}
-                            onChange={(e) => setNewCommodity({...newCommodity, price: e.target.value})}
-                            placeholder="e.g., 25.50"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="supply">Total Supply</Label>
-                          <Input
-                            id="supply"
-                            type="number"
-                            value={newCommodity.supply}
-                            onChange={(e) => setNewCommodity({...newCommodity, supply: e.target.value})}
-                            placeholder="e.g., 1000000"
-                          />
-                        </div>
-                        <Button 
-                          onClick={handleCreateCommodity} 
-                          disabled={creating}
-                          className="w-full"
-                        >
-                          {creating ? 'Creating...' : 'Create Commodity'}
-                        </Button>
+                <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="border-gold/20">
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Create New Commodity</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="symbol">Symbol</Label>
+                        <Input
+                          id="symbol"
+                          value={newCommodity.symbol}
+                          onChange={(e) => setNewCommodity({...newCommodity, symbol: e.target.value})}
+                          placeholder="e.g., SILVER"
+                        />
                       </div>
-                    </DialogContent>
-                  </Dialog>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPrivacyMode(!privacyMode)}
-                    className="border-gold/20"
-                  >
-                    {privacyMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
+                      <div>
+                        <Label htmlFor="name">Name</Label>
+                        <Input
+                          id="name"
+                          value={newCommodity.name}
+                          onChange={(e) => setNewCommodity({...newCommodity, name: e.target.value})}
+                          placeholder="e.g., Silver Futures"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="price">Initial Price (USD)</Label>
+                        <Input
+                          id="price"
+                          type="number"
+                          step="0.01"
+                          value={newCommodity.price}
+                          onChange={(e) => setNewCommodity({...newCommodity, price: e.target.value})}
+                          placeholder="e.g., 25.50"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="supply">Total Supply</Label>
+                        <Input
+                          id="supply"
+                          type="number"
+                          value={newCommodity.supply}
+                          onChange={(e) => setNewCommodity({...newCommodity, supply: e.target.value})}
+                          placeholder="e.g., 1000000"
+                        />
+                      </div>
+                      <Button 
+                        onClick={handleCreateCommodity} 
+                        disabled={creating}
+                        className="w-full"
+                      >
+                        {creating ? 'Creating...' : 'Create Commodity'}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -483,13 +472,13 @@ const TradingInterface = () => {
                   <div className="flex justify-between">
                     <span className="text-sm">Total Value:</span>
                     <span className="font-mono text-sm">
-                      {privacyMode ? "●●●●" : `$${portfolioInfo[0] || 0}`}
+                      ${portfolioInfo[0] || 0}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm">Trade Count:</span>
                     <span className="font-mono text-sm">
-                      {privacyMode ? "●●" : portfolioInfo[2] || 0}
+                      {portfolioInfo[2] || 0}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -580,7 +569,7 @@ const TradingInterface = () => {
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="chart-glow bg-gold/10 rounded-full w-32 h-32 flex items-center justify-center">
                     <span className="text-4xl font-bold text-gold">
-                      {privacyMode ? "●●●●" : `$${selectedCommodity?.price?.toFixed(2) || '0.00'}`}
+                      ${selectedCommodity?.price?.toFixed(2) || '0.00'}
                     </span>
                   </div>
                 </div>
@@ -594,9 +583,9 @@ const TradingInterface = () => {
                 <div className="mt-4 p-3 bg-muted rounded-md">
                   <div className="text-sm font-semibold mb-2">Contract Market Data:</div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>Current Price: {privacyMode ? "●●●●" : marketData[0]}</div>
-                    <div>Volume 24h: {privacyMode ? "●●●●" : marketData[1]}</div>
-                    <div>Price Change: {privacyMode ? "●●●●" : marketData[2]}</div>
+                    <div>Current Price: {marketData[0]}</div>
+                    <div>Volume 24h: {marketData[1]}</div>
+                    <div>Price Change: {marketData[2]}</div>
                     <div>Last Update: {new Date(Number(marketData[3]) * 1000).toLocaleTimeString()}</div>
                   </div>
                 </div>
@@ -611,12 +600,10 @@ const TradingInterface = () => {
                 <OrderForm 
                   type="buy" 
                   commodity={selectedCommodity} 
-                  privacyMode={privacyMode}
                 />
                 <OrderForm 
                   type="sell" 
                   commodity={selectedCommodity} 
-                  privacyMode={privacyMode}
                 />
               </>
             ) : (

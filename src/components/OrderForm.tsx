@@ -34,10 +34,9 @@ interface OrderFormProps {
     price: number;
     icon: string;
   };
-  privacyMode: boolean;
 }
 
-const OrderForm = ({ type, commodity, privacyMode }: OrderFormProps) => {
+const OrderForm = ({ type, commodity }: OrderFormProps) => {
   const { toast } = useToast();
   const { createOrder, isPending, error } = useCreateOrder();
   const { instance, isLoading: fheLoading } = useZamaInstance();
@@ -54,7 +53,7 @@ const OrderForm = ({ type, commodity, privacyMode }: OrderFormProps) => {
     resolver: zodResolver(orderSchema),
     defaultValues: {
       amount: "",
-      price: commodity.price > 0 ? commodity.price.toString() : "",
+      price: commodity.price > 0 ? commodity.price.toFixed(2) : "",
     },
   });
 
@@ -63,7 +62,7 @@ const OrderForm = ({ type, commodity, privacyMode }: OrderFormProps) => {
     const priceData = getPrice(commodity.symbol);
     const currentPrice = priceData?.currentPrice || commodity.price;
     if (currentPrice > 0) {
-      setValue("price", currentPrice.toString());
+      setValue("price", currentPrice.toFixed(2));
     }
   }, [commodity.symbol, commodity.price, getPrice, setValue]);
 
@@ -94,7 +93,7 @@ const OrderForm = ({ type, commodity, privacyMode }: OrderFormProps) => {
       
       toast({
         title: `${type === "buy" ? "Buy" : "Sell"} Order Placed`,
-        description: `${data.amount} units of ${commodity.symbol} ${privacyMode ? "●●●●" : `($${orderValue.toLocaleString()})`}`,
+        description: `${data.amount} units of ${commodity.symbol} ($${orderValue.toLocaleString()})`,
       });
       
       reset();
