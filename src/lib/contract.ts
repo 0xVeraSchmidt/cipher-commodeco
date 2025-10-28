@@ -123,7 +123,9 @@ export function useCreateOrder() {
       // Create encrypted input
       const input = instance.createEncryptedInput(CONTRACT_ADDRESS, address);
       input.add32(BigInt(amount));
-      input.add32(BigInt(price));
+      // Convert price to cents to avoid decimal issues
+      const priceInCents = Math.floor(price * 100);
+      input.add32(BigInt(priceInCents));
       
       const encryptedInput = await input.encrypt();
       

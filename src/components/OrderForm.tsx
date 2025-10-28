@@ -62,8 +62,14 @@ const OrderForm = ({ type, commodity, privacyMode }: OrderFormProps) => {
       const price = commodity.price;
       const isBuy = type === "buy";
       
+      // Ensure price is a valid number and convert to integer if needed
+      const validPrice = typeof price === 'number' ? price : parseFloat(price);
+      if (isNaN(validPrice)) {
+        throw new Error('Invalid price format');
+      }
+      
       // Create encrypted order on blockchain using FHE
-      await createOrder(amount, price, isBuy);
+      await createOrder(amount, validPrice, isBuy);
       
       const orderValue = amount * price;
       
